@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware.js';
 import { LoggingInterceptor } from './common/logging/logging.interceptor.js';
 import { AppLogger } from './common/logging/app-logger.service.js';
+import { HealthController } from './health/health.controller.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AppLogger } from './common/logging/app-logger.service.js';
     PrismaModule,
     AuthModule,
   ],
+  controllers: [HealthController],
   providers: [AppLogger, { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor }],
 })
 export class AppModule implements NestModule {
