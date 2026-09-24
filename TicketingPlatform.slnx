@@ -1,0 +1,53 @@
+<Solution>
+  <Folder Name="/aspire/" />
+  <Folder Name="/aspire/AppHost/">
+    <Project Path="aspire/AppHost/TicketingPlatform.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/aspire/ServiceDefaults/">
+    <Project Path="aspire/ServiceDefaults/TicketingPlatform.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/building-blocks/" />
+  <Folder Name="/building-blocks/idempotency/">
+    <Project Path="building-blocks/idempotency/TicketingPlatform.Idempotency.csproj" />
+  </Folder>
+  <Folder Name="/building-blocks/messaging/">
+    <Project Path="building-blocks/messaging/TicketingPlatform.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/building-blocks/observability/">
+    <Project Path="building-blocks/observability/TicketingPlatform.Observability.csproj" />
+  </Folder>
+  <Folder Name="/services/" />
+  <Folder Name="/services/catalog/" />
+  <Folder Name="/services/catalog/src/">
+    <Project Path="services/catalog/src/Catalog.Api/Catalog.Api.csproj" />
+    <Project Path="services/catalog/src/Catalog.Application/Catalog.Application.csproj" />
+    <Project Path="services/catalog/src/Catalog.Domain/Catalog.Domain.csproj" />
+    <Project Path="services/catalog/src/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/services/gateway/" />
+  <Folder Name="/services/gateway/src/">
+    <Project Path="services/gateway/src/Gateway.Api/Gateway.Api.csproj" />
+  </Folder>
+  <Folder Name="/services/orders/" />
+  <Folder Name="/services/orders/src/">
+    <Project Path="services/orders/src/Orders.Api/Orders.Api.csproj" />
+    <Project Path="services/orders/src/Orders.Application/Orders.Application.csproj" />
+    <Project Path="services/orders/src/Orders.Domain/Orders.Domain.csproj" />
+    <Project Path="services/orders/src/Orders.Infrastructure/Orders.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/services/payments/" />
+  <Folder Name="/services/payments/src/">
+    <Project Path="services/payments/src/FakePaymentGateway.Api/FakePaymentGateway.Api.csproj" />
+    <Project Path="services/payments/src/Payments.Api/Payments.Api.csproj" />
+    <Project Path="services/payments/src/Payments.Application/Payments.Application.csproj" />
+    <Project Path="services/payments/src/Payments.Domain/Payments.Domain.csproj" />
+    <Project Path="services/payments/src/Payments.Infrastructure/Payments.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/services/ticketing/" />
+  <Folder Name="/services/ticketing/src/">
+    <Project Path="services/ticketing/src/Ticketing.Api/Ticketing.Api.csproj" />
+    <Project Path="services/ticketing/src/Ticketing.Application/Ticketing.Application.csproj" />
+    <Project Path="services/ticketing/src/Ticketing.Domain/Ticketing.Domain.csproj" />
+    <Project Path="services/ticketing/src/Ticketing.Infrastructure/Ticketing.Infrastructure.csproj" />
+  </Folder>
+</Solution>

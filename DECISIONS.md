@@ -56,6 +56,14 @@ Per the prompt's explicit instruction, implementation proceeds critical-path-fir
 
 ---
 
+## D13 — Catalog and Ticketing seed independently, keyed by shared event id convention
+
+Catalog owns event/venue reference data; Ticketing owns seat inventory. They are never allowed to call each other synchronously on the read path (that would make Ticketing's availability reads depend on Catalog's uptime, and vice versa). For the PoC's seed data, both services' startup seeders create records for the *same* well-known demo event ids (fixed GUIDs, not generated at random per service), so the vertical slice has matching data to demo against without one service reaching into the other's database or API at seed time. In a real system, Ticketing would learn about a new event via an `EventPublished`-style integration event from Catalog rather than a shared seed convention — noted here as a deliberate PoC shortcut, not the production design.
+
+## D14 — NestJS services use Vitest, not Jest
+
+`ARCHITECTURE.md` and the prompt's mention of testing assume Jest, the traditional NestJS default. The NestJS CLI version available in this environment (`@nestjs/cli` 12.x) scaffolds new projects with **Vitest** by default. Vitest is used as generated rather than fighting the toolchain to force Jest back in — it satisfies the same requirement (unit + e2e tests for Notification Service covering duplicate consumption, idempotency, SNS publish, trace propagation, retry behavior) with no meaningful difference in capability for this codebase's needs.
+
 ## Build status snapshot
 
 This section is updated as work proceeds; treat it as the current source of truth for "what's actually done" vs. "what's scaffolded."
