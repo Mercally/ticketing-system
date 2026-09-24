@@ -1,0 +1,24 @@
+// notification-service's own Prisma schema, own database ("notification-db").
+// Same database-per-service rule as every other service in this monorepo
+// (ARCHITECTURE.md §11, ADR-0001) — no other service ever reads/writes this schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Inbox pattern (ADR-0009 / ADR-0006 equivalent for Node): one row per
+/// MassTransit envelope `messageId` we have successfully processed. A
+/// `UNIQUE` constraint on the primary key is the race-safe last line of
+/// defense against two concurrent redeliveries of the same message both
+/// "winning" the pre-processing existence check (see InboxService).
+model ProcessedMessage {
+  messageId   String   @id @map("message_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_messages")
+}

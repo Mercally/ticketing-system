@@ -1,0 +1,35 @@
+# Runs infrastructure/k8s/base/localstack/provision-configmap.yaml's script once LocalStack is up.
+# See that ConfigMap's header comment for how much to trust the topic/queue names it creates —
+# this is a best-effort scaffold, not a verified source of truth, because it depends on messaging
+# code that's still being written elsewhere. Safe to `kubectl delete job/localstack-provision -n
+# ticketing` and re-run manually (`kubectl apply -f provision-job.yaml`) after editing the script.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: localstack-provision
+  namespace: ticketing
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: provision
+          image: amazon/aws-cli:2.27.0
+          command: ["/bin/sh", "/scripts/provision.sh"]
+          env:
+            # LocalStack accepts any non-empty dummy credentials — these are not real AWS creds.
+            - name: AWS_ACCESS_KEY_ID
+              value: "test"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "test"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: localstack-provision-script
+            defaultMode: 0755

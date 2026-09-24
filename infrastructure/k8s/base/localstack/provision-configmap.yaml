@@ -1,0 +1,100 @@
+# Best-effort SNS/SQS provisioning scaffold for LocalStack. Mounted into the Job defined in
+# provision-job.yaml.
+#
+# HONESTY NOTE (read before trusting the names below): MassTransit auto-provisions its own
+# topics/queues/subscriptions against the AWS transport on startup — it does NOT need this Job to
+# have pre-created anything, and normally would just create the right topology itself the moment
+# each service boots. This Job exists only as a documented, inspectable scaffold for two cases
+# where pre-provisioning is still useful: (1) local debugging with `awslocal`/`aws` before any
+# service is running, (2) CI wanting queues to exist before consumers attach. The exact topic/queue
+# names MassTransit derives from each record type in docs/CONTRACTS.md §10 depend on code that is
+# still being written by other in-progress work (the entity/endpoint name formatter config lives
+# in building-blocks/messaging, which is not yet implemented as of writing). The names used below
+# are a REASONABLE GUESS at MassTransit's default naming (roughly: kebab-cased message type name,
+# per CONTRACTS.md §10's note that all services call `x.SetKebabCaseEndpointNameFormatter()`) —
+# they are NOT verified against running code. Treat every `# TODO` below as exactly that: confirm
+# against the actual topology MassTransit logs on startup (it logs every topic/queue/subscription
+# it creates) and correct the names here to match before relying on this Job for anything real.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: localstack-provision-script
+  namespace: ticketing
+data:
+  provision.sh: |
+    #!/bin/sh
+    set -eu
+
+    ENDPOINT="http://localstack:4566"
+    REGION="us-east-1"
+    AWS="aws --endpoint-url=${ENDPOINT} --region=${REGION}"
+
+    create_topic() {
+      name="$1"
+      echo "Creating SNS topic: ${name}"
+      $AWS sns create-topic --name "${name}" >/dev/null
+    }
+
+    create_queue_subscribed_to_topic() {
+      topic_name="$1"
+      queue_name="$2"
+      echo "Creating SQS queue: ${queue_name}, subscribing to topic: ${topic_name}"
+      $AWS sqs create-queue --queue-name "${queue_name}" >/dev/null
+      queue_arn=$($AWS sqs get-queue-attributes \
+        --queue-url "${ENDPOINT}/000000000000/${queue_name}" \
+        --attribute-names QueueArn --query 'Attributes.QueueArn' --output text)
+      topic_arn="arn:aws:sns:${REGION}:000000000000:${topic_name}"
+      $AWS sns subscribe --topic-arn "${topic_arn}" --protocol sqs --notification-endpoint "${queue_arn}" >/dev/null
+    }
+
+    # --- Events/commands from docs/CONTRACTS.md §10 (namespace = canonical owner/publisher) ---
+    # TODO: confirm every topic name below against MassTransit's actual startup log once
+    # building-blocks/messaging + each service's consumer wiring lands. Do not treat these as final.
+
+    # Ticketing.Contracts.V1 (owned/published by Ticketing)
+    create_topic "ticketing-contracts-v1-ticketconfirmedv1"           # TODO verify
+    create_topic "ticketing-contracts-v1-ticketconfirmationfailedv1"  # TODO verify
+    create_topic "ticketing-contracts-v1-reservationreleasedv1"       # TODO verify
+
+    # Orders.Contracts.V1 (owned/published/sent by Orders)
+    create_topic "orders-contracts-v1-ordersubmittedv1"      # TODO verify
+    create_topic "orders-contracts-v1-orderconfirmedv1"      # TODO verify
+    create_topic "orders-contracts-v1-ordercancelledv1"      # TODO verify
+    create_topic "orders-contracts-v1-processpaymentv1"      # TODO verify (command, sent not published — may not need a topic)
+    create_topic "orders-contracts-v1-confirmseatv1"         # TODO verify (command)
+    create_topic "orders-contracts-v1-releasereservationv1"  # TODO verify (command)
+    create_topic "orders-contracts-v1-refundpaymentv1"       # TODO verify (command)
+
+    # Payments.Contracts.V1 (owned/published by Payments)
+    create_topic "payments-contracts-v1-paymentsucceededv1"  # TODO verify
+    create_topic "payments-contracts-v1-paymentfailedv1"     # TODO verify
+    create_topic "payments-contracts-v1-paymentrefundedv1"   # TODO verify
+
+    # Notification Service's own outbound topic (ARCHITECTURE.md §8) — this one's name IS
+    # specified literally in docs/CONTRACTS.md §9, not derived from a C# type.
+    create_topic "notifications-outbound"
+
+    # --- Queues (one per consuming service per subscribed topic; see ARCHITECTURE.md §3/§8) ---
+    # TODO: exact queue names + which queue subscribes to which topic depend on each service's
+    # receive-endpoint configuration (not yet written). Sketching the shape below from
+    # ARCHITECTURE.md's Rel(...) lines; NOT verified.
+    create_queue_subscribed_to_topic "orders-contracts-v1-ordersubmittedv1"     "orders-service"      # Orders self-consumes to start the saga
+    create_queue_subscribed_to_topic "payments-contracts-v1-paymentsucceededv1" "orders-service"
+    create_queue_subscribed_to_topic "payments-contracts-v1-paymentfailedv1"    "orders-service"
+    create_queue_subscribed_to_topic "ticketing-contracts-v1-ticketconfirmedv1" "orders-service"
+    create_queue_subscribed_to_topic "orders-contracts-v1-processpaymentv1"     "payments-service"
+    create_queue_subscribed_to_topic "orders-contracts-v1-refundpaymentv1"      "payments-service"
+    create_queue_subscribed_to_topic "orders-contracts-v1-confirmseatv1"        "ticketing-service"
+    create_queue_subscribed_to_topic "orders-contracts-v1-releasereservationv1" "ticketing-service"
+    create_queue_subscribed_to_topic "orders-contracts-v1-orderconfirmedv1"     "notification-service"
+    create_queue_subscribed_to_topic "payments-contracts-v1-paymentsucceededv1" "notification-service"
+    create_queue_subscribed_to_topic "payments-contracts-v1-paymentfailedv1"    "notification-service"
+    create_queue_subscribed_to_topic "ticketing-contracts-v1-ticketconfirmedv1" "notification-service"
+
+    # DLQs: MassTransit's AWS transport auto-creates a "-error" or "_error" queue per receive
+    # endpoint by default when error/DLQ topology is enabled in code — not pre-provisioned here,
+    # since the exact suffix/behavior is a MassTransit config choice made in building-blocks/messaging.
+    # TODO: add explicit redrive-policy DLQs here if that code ends up wanting pre-created ones
+    # instead of relying on MassTransit's own DLQ auto-provisioning.
+
+    echo "LocalStack provisioning scaffold complete (best-effort — see file header before trusting names)."

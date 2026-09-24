@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: localstack
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: localstack
+spec:
+  selector:
+    app.kubernetes.io/name: localstack
+  ports:
+    - name: edge
+      port: 4566
+      targetPort: 4566

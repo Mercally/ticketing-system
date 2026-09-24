@@ -1,0 +1,41 @@
+# Mounted at /docker-entrypoint-initdb.d/ in the postgres container. The official postgres
+# image runs every *.sh/*.sql file found there, in filename order, ONCE — only on first startup
+# against an empty data directory (see statefulset.yaml's PGDATA subpath comment for why this
+# matters when the PVC is reused).
+#
+# Per DECISIONS.md D5: local k8s runs ONE Postgres instance hosting FIVE databases (not five
+# separate pods, which is the Aspire-local pattern and is intentionally NOT copied here). Each
+# database gets its own role so the five services stay credential-isolated from each other even
+# though they share a server process — a compromised/misconfigured service can only ever reach
+# its own database.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: ticketing
+data:
+  01-create-service-databases.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    create_db_and_role() {
+      local db="$1"
+      local role="$2"
+      local password="$3"
+
+      psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+        CREATE ROLE ${role} WITH LOGIN PASSWORD '${password}';
+        CREATE DATABASE ${db} OWNER ${role};
+        GRANT ALL PRIVILEGES ON DATABASE ${db} TO ${role};
+    EOSQL
+    }
+
+    # Passwords come from the postgres-credentials Secret, mounted into this container's
+    # environment via envFrom in statefulset.yaml.
+    create_db_and_role "auth"      "auth_user"      "${AUTH_DB_PASSWORD}"
+    create_db_and_role "catalog"   "catalog_user"   "${CATALOG_DB_PASSWORD}"
+    create_db_and_role "ticketing" "ticketing_user" "${TICKETING_DB_PASSWORD}"
+    create_db_and_role "orders"    "orders_user"    "${ORDERS_DB_PASSWORD}"
+    create_db_and_role "payments"  "payments_user"  "${PAYMENTS_DB_PASSWORD}"
+
+    echo "Created 5 databases (auth, catalog, ticketing, orders, payments) each with its own role."

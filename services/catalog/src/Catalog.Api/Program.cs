@@ -1,21 +1,34 @@
+using Catalog.Application;
+using Catalog.Infrastructure;
+using TicketingPlatform.Observability;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.AddTicketingLogging("catalog");
+builder.AddServiceDefaults();
+
+builder.AddNpgsqlDbContext<CatalogDbContext>("catalogdb");
+
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<EventsQueryService>();
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseCorrelationId();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+    await CatalogDbSeeder.SeedAsync(db);
 }
 
-app.UseAuthorization();
-
+app.MapDefaultEndpoints();
 app.MapControllers();
 
 app.Run();

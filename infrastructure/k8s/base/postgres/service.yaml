@@ -1,0 +1,20 @@
+# Headless Service (ClusterIP: None) fronting the single-pod postgres StatefulSet. Headless
+# because a StatefulSet's stable network identity (postgres-0.postgres.ticketing.svc...) is what
+# we want addressable, not a load-balanced virtual IP across replicas (there's only ever one
+# postgres pod here per DECISIONS.md D5). Every app service just connects to "postgres" — DNS
+# resolves that to the pod directly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: postgres
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
