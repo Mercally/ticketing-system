@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Orders.Domain\Orders.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\building-blocks\observability\TicketingPlatform.Observability.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

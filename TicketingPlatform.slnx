@@ -50,4 +50,7 @@
     <Project Path="services/ticketing/src/Ticketing.Domain/Ticketing.Domain.csproj" />
     <Project Path="services/ticketing/src/Ticketing.Infrastructure/Ticketing.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Orders.SagaTests/Orders.SagaTests.csproj" />
+  </Folder>
 </Solution>
