@@ -56,6 +56,9 @@ public static class MessagingExtensions
                 cfg.UsePublishFilter(typeof(CorrelationIdPublishFilter<>), context);
                 cfg.UseConsumeFilter(typeof(CorrelationIdConsumeFilter<>), context);
 
+                // Services with an EF Core Outbox (ADR-0005) call x.AddEntityFrameworkOutbox<TDbContext>()
+                // in their `configure` callback above — MassTransit auto-applies inbox-based idempotent
+                // consumption to every endpoint ConfigureEndpoints sets up below, no per-endpoint wiring needed.
                 cfg.ConfigureEndpoints(context);
             });
         });
