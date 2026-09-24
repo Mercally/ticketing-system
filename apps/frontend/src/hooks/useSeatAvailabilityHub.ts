@@ -19,7 +19,12 @@ export function useSeatAvailabilityHub(
   onSeatStatusChanged: (payload: SeatStatusChangedPayload) => void,
 ): void {
   const handlerRef = useRef(onSeatStatusChanged);
-  handlerRef.current = onSeatStatusChanged;
+
+  // Keep the ref current without re-running the connection effect below on every
+  // render (the caller typically passes a fresh inline callback each render).
+  useEffect(() => {
+    handlerRef.current = onSeatStatusChanged;
+  }, [onSeatStatusChanged]);
 
   useEffect(() => {
     if (!eventId) {
