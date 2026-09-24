@@ -1,0 +1,61 @@
+# replicas: 1 is DELIBERATE, not a placeholder forgotten at 1. Ticketing hosts the
+# /hubs/seat-availability SignalR hub (docs/CONTRACTS.md §5). SignalR's default in-memory backplane
+# only fans messages out to clients connected to the SAME pod — with replicas > 1 and no shared
+# backplane, a client connected to pod A would never see a SeatStatusChanged event broadcast by a
+# CAS update that happened to be served by pod B, silently breaking "close to real-time" seat
+# availability for a fraction of connected clients. ADR-0007 (docs/adr/) calls for a Redis SignalR
+# backplane as the fix. Note: that would be a SEPARATE Redis usage from the one Gateway uses for
+# waiting-room/rate-limit state (DECISIONS.md D11 scopes THAT Redis instance to Gateway only) — do
+# not casually point Ticketing at the existing infrastructure/k8s/base/redis Service without also
+# reconsidering whether that violates D11's "Redis is used exactly once, in the Gateway" framing;
+# this would need its own decision logged in DECISIONS.md, not a silent infra change here. Until
+# that's decided and `Microsoft.AspNetCore.SignalR.StackExchangeRedis` is wired up in
+# Ticketing.Api, replicas MUST stay at 1 to avoid silently broken multi-replica broadcast.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticketing
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: ticketing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ticketing
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ticketing
+    spec:
+      containers:
+        - name: ticketing
+          image: ticketing/ticketing:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5003
+              name: http
+          envFrom:
+            - configMapRef:
+                name: ticketing-config
+            - secretRef:
+                name: ticketing-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 5003
+            initialDelaySeconds: 15
+            periodSeconds: 20

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+
+  AWS_ENDPOINT_URL: "http://localstack:4566"
+  AWS_REGION: "us-east-1"
+  AWS_ACCESS_KEY_ID: "test"
+  AWS_SECRET_ACCESS_KEY: "test"
+  # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

@@ -1,0 +1,32 @@
+# Non-secret env for Gateway (.NET 10 + YARP — edge routing, rate limiting, waiting-room
+# admission; DECISIONS.md D1). ASPNETCORE_ENVIRONMENT=Development is set deliberately (not just
+# left over) so aspire/ServiceDefaults' MapDefaultEndpoints() actually maps /health and /alive —
+# it only does so when IsDevelopment() is true (see Extensions.cs). This is a PoC-scoped choice:
+# a real deployment would use a dedicated always-on health-check policy instead of piggybacking on
+# the Development environment flag (see infrastructure/k8s/README.md).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+
+  # Waiting-room / rate-limit state ONLY (DECISIONS.md D11) — never seat authority.
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # Downstream services this Gateway proxies to, by in-cluster Service DNS name (short form
+  # resolves within the same "ticketing" namespace). Route prefixes are fixed by
+  # docs/CONTRACTS.md §1: /api/auth/* /api/catalog/* /api/ticketing/* /api/orders/* /api/payments/*.
+  AUTH_SERVICE_URL: "http://auth-service:5001"
+  CATALOG_SERVICE_URL: "http://catalog:5002"
+  TICKETING_SERVICE_URL: "http://ticketing:5003"
+  ORDERS_SERVICE_URL: "http://orders:5004"
+  PAYMENTS_SERVICE_URL: "http://payments:5005"
+
+  # No OTel Collector is deployed in this k8s scaffold (out of scope for this pass — Aspire's
+  # own dashboard is the primary local observability experience per ARCHITECTURE.md §12). Leaving
+  # this unset means aspire/ServiceDefaults' AddOpenTelemetryExporters() simply skips exporting
+  # rather than failing against a host that doesn't exist. Set this once a collector is deployed:
+  # OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"

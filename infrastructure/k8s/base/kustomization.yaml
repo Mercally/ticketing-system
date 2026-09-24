@@ -1,0 +1,68 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ticketing
+
+resources:
+  - namespace.yaml
+
+  - postgres/secret.yaml
+  - postgres/configmap-init.yaml
+  - postgres/service.yaml
+  - postgres/statefulset.yaml
+
+  - localstack/deployment.yaml
+  - localstack/service.yaml
+  - localstack/provision-configmap.yaml
+  - localstack/provision-job.yaml
+
+  - redis/deployment.yaml
+  - redis/service.yaml
+
+  - gateway/configmap.yaml
+  - gateway/secret.yaml
+  - gateway/deployment.yaml
+  - gateway/service.yaml
+
+  - auth-service/configmap.yaml
+  - auth-service/secret.yaml
+  - auth-service/deployment.yaml
+  - auth-service/service.yaml
+
+  - catalog/configmap.yaml
+  - catalog/secret.yaml
+  - catalog/deployment.yaml
+  - catalog/service.yaml
+
+  - ticketing/configmap.yaml
+  - ticketing/secret.yaml
+  - ticketing/deployment.yaml
+  - ticketing/service.yaml
+
+  - orders/configmap.yaml
+  - orders/secret.yaml
+  - orders/deployment.yaml
+  - orders/service.yaml
+
+  - payments/configmap.yaml
+  - payments/secret.yaml
+  - payments/deployment.yaml
+  - payments/service.yaml
+
+  - fakepaymentgateway/configmap.yaml
+  - fakepaymentgateway/secret.yaml
+  - fakepaymentgateway/deployment.yaml
+  - fakepaymentgateway/service.yaml
+
+  - notification-service/configmap.yaml
+  - notification-service/secret.yaml
+  - notification-service/deployment.yaml
+  - notification-service/service.yaml
+
+  - frontend/configmap.yaml
+  - frontend/secret.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: ticketing-platform

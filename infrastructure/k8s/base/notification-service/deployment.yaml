@@ -1,0 +1,50 @@
+# Readiness/liveness probe path: docs/CONTRACTS.md §9 explicitly specifies `GET /health` for
+# Notification Service (unlike auth-service, where /health is an assumption — see that service's
+# deployment.yaml comment). As of writing the code hasn't landed yet (still just the NestJS
+# default `GET /`), so this WILL 404 until that route exists; verify once the service build lands.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: notification-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: ticketing/notification-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5007
+              name: http
+          envFrom:
+            - configMapRef:
+                name: notification-service-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5007
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5007
+            initialDelaySeconds: 15
+            periodSeconds: 20

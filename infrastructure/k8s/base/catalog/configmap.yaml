@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalog-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  # See gateway/configmap.yaml for why Development is set deliberately (ServiceDefaults'
+  # /health + /alive only map in IsDevelopment()), and for the OTEL_EXPORTER_OTLP_ENDPOINT note.

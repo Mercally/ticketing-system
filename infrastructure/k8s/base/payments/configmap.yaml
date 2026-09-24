@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+
+  AWS_ENDPOINT_URL: "http://localstack:4566"
+  AWS_REGION: "us-east-1"
+  AWS_ACCESS_KEY_ID: "test"
+  AWS_SECRET_ACCESS_KEY: "test"
+
+  # Payments -> Fake Payment Gateway, over real HTTP (DECISIONS.md D2 — a separate process so the
+  # Polly resilience pipeline has a genuine network hop to time out / trip a circuit breaker on).
+  FAKE_PAYMENT_GATEWAY_URL: "http://fakepaymentgateway:5006"
+  # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

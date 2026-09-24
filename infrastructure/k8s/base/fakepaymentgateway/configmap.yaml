@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fakepaymentgateway-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

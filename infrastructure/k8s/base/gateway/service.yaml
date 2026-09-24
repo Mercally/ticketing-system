@@ -1,0 +1,25 @@
+# Exposed via NodePort, not Ingress — see infrastructure/k8s/README.md "Reaching the cluster"
+# section for the full rationale/trade-off. Short version: NodePort needs zero extra components
+# installed on a bare kind/minikube cluster; Ingress (via ingress-nginx) is more production-like
+# (mirrors the CloudFront/WAF/API Gateway edge in ARCHITECTURE.md §10.5) but adds a controller
+# dependency this PoC's local setup deliberately avoids requiring.
+#
+# nodePort 30500 is fixed (not auto-assigned) so infrastructure/docker/frontend.Dockerfile's
+# default VITE_API_BASE_URL build ARG (http://localhost:30500) stays correct without needing to
+# be looked up after every `kubectl apply`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: gateway
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: gateway
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      nodePort: 30500

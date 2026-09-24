@@ -1,0 +1,11 @@
+# Entry point for local kind/minikube validation, per standard Kustomize convention (base/ is
+# never applied directly). Currently just references base as-is — a thin pass-through — since
+# there's only one local target so far. This is the natural place to add, later, without touching
+# base/: a `local`-specific image tag suffix, replica-count patches for a smaller/larger laptop,
+# or a second overlay (e.g. overlays/ci) with different resource limits for a CI-hosted kind
+# cluster.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base

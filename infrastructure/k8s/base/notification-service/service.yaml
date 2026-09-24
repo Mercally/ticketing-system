@@ -1,0 +1,17 @@
+# ClusterIP only — Notification Service has "No public write API" (docs/CONTRACTS.md §9), it's
+# never proxied through Gateway and nothing outside the cluster needs to reach it directly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: notification-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: notification-service
+  ports:
+    - name: http
+      port: 5007
+      targetPort: 5007

@@ -1,0 +1,19 @@
+# Plain ClusterIP is sufficient for the SignalR hub too as long as replicas stay at 1 (see
+# deployment.yaml's header comment) — no sticky-session/session-affinity configuration is needed
+# for a single pod. Revisit this Service (session affinity, or route SignalR traffic differently)
+# together with the backplane work if replicas ever goes above 1.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ticketing
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: ticketing
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: ticketing
+  ports:
+    - name: http
+      port: 5003
+      targetPort: 5003

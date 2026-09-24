@@ -1,0 +1,13 @@
+# Effectively unused at runtime: Vite bakes VITE_API_BASE_URL into the static bundle at BUILD
+# time (see infrastructure/docker/frontend.Dockerfile's header comment) — an nginx container
+# serving static files has no code path that reads container env vars back out of the bundle.
+# Kept here only as a record of what the currently-built image was pointed at, for operators
+# inspecting the cluster; changing this ConfigMap does NOT change frontend behavior — rebuild the
+# image with a different --build-arg VITE_API_BASE_URL instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: ticketing
+data:
+  BUILT_WITH_VITE_API_BASE_URL: "http://localhost:30500"

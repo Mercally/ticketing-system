@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketing-config
+  namespace: ticketing
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+
+  # LocalStack SQS/SNS endpoint (DECISIONS.md D4). Dummy LocalStack credentials — not real AWS
+  # creds, safe to keep non-secret.
+  AWS_ENDPOINT_URL: "http://localstack:4566"
+  AWS_REGION: "us-east-1"
+  AWS_ACCESS_KEY_ID: "test"
+  AWS_SECRET_ACCESS_KEY: "test"
+  # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

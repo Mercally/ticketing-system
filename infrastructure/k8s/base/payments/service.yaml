@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: payments
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: payments
+  ports:
+    - name: http
+      port: 5005
+      targetPort: 5005

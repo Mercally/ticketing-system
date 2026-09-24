@@ -1,0 +1,54 @@
+# NOTE on readiness/liveness probe path: services/auth-service currently (as of writing) only
+# exposes the NestJS-generated `GET /` ("Hello World") — no dedicated /health route yet, since the
+# service is mid-build by other in-progress work. docs/CONTRACTS.md §9 explicitly gives
+# notification-service a `GET /health`, and a matching health route is a near-certain addition
+# here too (every other service in this system has one), so /health is used below on that
+# assumption. If auth-service ships without one, change this probe to `path: /`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: ticketing
+  labels:
+    app.kubernetes.io/name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: ticketing/auth-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+              name: http
+          envFrom:
+            - configMapRef:
+                name: auth-service-config
+            - secretRef:
+                name: auth-service-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 20

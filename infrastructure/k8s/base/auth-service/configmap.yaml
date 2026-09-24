@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: ticketing
+data:
+  PORT: "5001"
+  NODE_ENV: "production"
+  # No OTel Collector deployed in this k8s scaffold — see gateway/configmap.yaml for the same note.
+  # OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
