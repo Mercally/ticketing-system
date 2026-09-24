@@ -1,0 +1,47 @@
+# Root .dockerignore — applies to every `docker build` in this repo, since all
+# infrastructure/docker/*.Dockerfile use the repo root as build context (multi-project
+# .NET solution + npm workspaces need the full tree for ProjectReference/workspace resolution).
+
+# .NET build output (never trust host-built artifacts inside the image)
+bin/
+obj/
+**/bin/
+**/obj/
+*.user
+.vs/
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.env
+.env.local
+.env.*.local
+
+# Aspire (local-only orchestration, irrelevant inside any container image)
+.aspire/
+aspire/AppHost/bin/
+aspire/AppHost/obj/
+
+# Frontend is only relevant to frontend.Dockerfile, which COPYs it explicitly —
+# excluding it from every other service's build context keeps those contexts small.
+# (Left commented out: uncomment if per-service build context slimming is desired later.)
+# apps/
+
+# Terraform (never needed inside an app image)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# git / OS / IDE
+.git/
+.DS_Store
+.idea/
+*.swp
+
+# Docs / tests not needed at build time
+docs/
+tests/
+*.md
