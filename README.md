@@ -54,7 +54,7 @@ Brings up all 5 Postgres instances, LocalStack (SQS/SNS), Redis, every .NET serv
 kubectl apply -k infrastructure/k8s/overlays/local
 ```
 
-Full instructions, including how to reach the frontend/gateway and what to check once it's up, in [infrastructure/k8s/README.md](infrastructure/k8s/README.md).
+Full instructions, including how to reach the frontend/gateway and what to check once it's up, in [infrastructure/k8s/README.md](infrastructure/k8s/README.md). Testing against a **remote** Docker host instead of local Docker (simulating EKS/SNS/S3 without a real AWS account) has its own guide: [infrastructure/LOCAL_AWS_SIMULATION.md](infrastructure/LOCAL_AWS_SIMULATION.md).
 
 ## Running the tests
 
