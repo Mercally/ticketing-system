@@ -86,11 +86,11 @@ This section is updated as work proceeds; treat it as the current source of trut
 - Frontend (React + Vite): full buyer flow (login → browse → seat map with live SignalR updates → reserve → checkout with simulation-mode selector → order status polling). Builds clean; not exercised against a live backend (see D15-adjacent note below — no full stack was ever running simultaneously in this environment).
 - Building blocks (messaging/observability/idempotency), infra (Dockerfiles, k8s manifests, Terraform skeleton — `terraform validate` passing).
 
-**Implemented, builds clean, not independently tested in this build:**
-- Payment Service + Fake Payment Gateway (.NET): `IPaymentGateway` abstraction, resilient HTTP client (timeout→retry→circuit breaker), 5 simulation modes, webhook idempotency, EF outbox/inbox.
-- `aspire/AppHost` full-stack wiring: compiles; never run end-to-end (D15).
+**Implemented, builds clean, smoke-tested standalone, not covered by an automated test suite:**
+- Payment Service + Fake Payment Gateway (.NET): `IPaymentGateway` abstraction, resilient HTTP client (timeout→retry→circuit breaker), 5 simulation modes, webhook idempotency, EF outbox/inbox. FakePaymentGateway's `/authorize` smoke-tested directly (Success → 200+authCode, Decline → 402); Payment Service's consumer/resilience logic itself has no dedicated test project yet.
+- `aspire/AppHost` full-stack wiring: compiles cleanly (`dotnet build`, confirming every Aspire hosting API call used resolves against the real SDK); never run end-to-end (D15).
 
 **Known gaps, honestly, rather than silently absent:**
 - No live end-to-end run of the full purchase flow (Login → Browse → Reserve → Order → Payment → Confirm → Notification) through a running stack — this environment never had all the pieces (Docker, LocalStack, 5 live Postgres instances, all 8 services, the frontend) running simultaneously to attempt one. Every individual piece is tested in isolation instead.
-- Integration/idempotency tests beyond Ticketing's concurrency suite and the unit-level idempotency-store tests implied by Auth/Notification's suites — no dedicated `Orders.IntegrationTests`/`Payments.IntegrationTests` project exercising the Idempotency-Key HTTP behavior end-to-end via `WebApplicationFactory`.
+- `tests/Ticketing.ConcurrencyTests` also proves `EfIdempotencyStore`'s UNIQUE-constraint race handling directly against real Postgres (concurrent `TryInsertPendingAsync` calls for the same key — exactly one winner), which is the correctness-critical logic `[Idempotent]` relies on and is shared verbatim by Orders/Payments. No dedicated `Orders.IntegrationTests`/`Payments.IntegrationTests` project exercises the full `Idempotency-Key` HTTP behavior end-to-end via `WebApplicationFactory` though — lower marginal value given the above, and real risk of the test hanging on MassTransit's AWS transport trying to reach LocalStack, which isn't available either (D15).
 - SignalR Redis backplane (ADR-0007) is documented but not wired — Ticketing runs single-replica by design in both Aspire and k8s, which is consistent, not silently broken, but scaling it out would need that backplane added first.
