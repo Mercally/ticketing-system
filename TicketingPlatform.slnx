@@ -52,5 +52,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Orders.SagaTests/Orders.SagaTests.csproj" />
+    <Project Path="tests/Ticketing.ConcurrencyTests/Ticketing.ConcurrencyTests.csproj" />
   </Folder>
 </Solution>
