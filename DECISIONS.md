@@ -64,8 +64,33 @@ Catalog owns event/venue reference data; Ticketing owns seat inventory. They are
 
 `ARCHITECTURE.md` and the prompt's mention of testing assume Jest, the traditional NestJS default. The NestJS CLI version available in this environment (`@nestjs/cli` 12.x) scaffolds new projects with **Vitest** by default. Vitest is used as generated rather than fighting the toolchain to force Jest back in — it satisfies the same requirement (unit + e2e tests for Notification Service covering duplicate consumption, idempotency, SNS publish, trace propagation, retry behavior) with no meaningful difference in capability for this codebase's needs.
 
+## D15 — This build environment has no Docker daemon; what that did and didn't limit
+
+The sandbox this was built in has the `docker` CLI installed but no running daemon (`docker info` fails, no Docker Desktop app present) and no `kubectl`/`kind`/`minikube`. This mattered in two places, handled differently:
+
+- **The concurrent-same-seat-reservation test** (`tests/Ticketing.ConcurrencyTests`, ADR-0002's core proof) needs a *real* PostgreSQL — an in-memory provider wouldn't exercise the row-level MVCC behavior the guarantee depends on, so a fake wasn't an option. Testcontainers (the natural choice) requires Docker. Instead, a PostgreSQL 16 instance was installed via Homebrew and run natively for the test, connecting via the local `~/.pgpass` credentials (never embedded in source — parsed at runtime, and `TICKETING_TEST_CONNECTION_STRING` overrides it entirely for a CI/other environment). The test creates and fully drops its own database (`ticketing_concurrency_test`) each run — no residue on the host. This is a full, honest substitution: the actual mechanism under test (EF Core's `ExecuteUpdateAsync` → one atomic conditional `UPDATE ... WHERE ...`) runs identically against any real Postgres instance; the test's value doesn't depend on that instance being containerized.
+- **`aspire/AppHost` (local Aspire orchestration), `infrastructure/k8s` (Kustomize manifests), and `infrastructure/terraform`** could not be exercised end-to-end in this environment — Aspire's Postgres/Redis/LocalStack resources are container-backed, and there's no cluster to `kubectl apply` against. Each was instead verified as thoroughly as the environment allows: AppHost by `dotnet build aspire/AppHost` (confirms every Aspire hosting API call used resolves correctly against the real SDK); Terraform by `terraform validate` (passed — see the infrastructure commit); k8s manifests by parsing all 49 YAML files and confirming every path referenced in `base/kustomization.yaml` exists on disk. None of the three have been run against live infrastructure by this build. Running `dotnet run` in `aspire/AppHost` (with Docker available) is the natural next verification step for whoever picks this up locally.
+
 ## Build status snapshot
 
 This section is updated as work proceeds; treat it as the current source of truth for "what's actually done" vs. "what's scaffolded."
 
-_(updated incrementally during the build — see bottom of file for latest)_
+**Fully implemented, built, and tested:**
+- Architecture docs: `ARCHITECTURE.md`, this file, all 9 required ADRs, 7 Mermaid diagrams, `docs/CONTRACTS.md`.
+- Catalog Service (.NET): events read API, EF Core + Postgres, seeded demo data.
+- Ticketing Service (.NET): the seat CAS mechanism (ADR-0002), SignalR hub, MassTransit consumers/outbox/inbox, Idempotency-Key. **Proven under real concurrent load against real PostgreSQL** — 50-way concurrent same-seat reservation race, exactly 1 success every run.
+- Order Service (.NET): MassTransit saga state machine orchestrating the full purchase flow plus both compensation paths (including the D8 addition), EF outbox/inbox, Idempotency-Key. 4/4 saga tests passing against MassTransit's in-memory test harness.
+- Gateway (.NET + YARP): routing, rate limiting/load shedding, Redis-backed waiting room. Smoke-tested standalone (health check, proxy-to-unreachable-downstream behavior).
+- Auth Service (NestJS): registration, login, JWT + refresh-token rotation with reuse-detection, Prisma + Postgres. 14 tests passing (unit + e2e against an in-memory Prisma fake).
+- Notification Service (NestJS): idempotent SQS consumption, SNS republish, CorrelationId propagation, retry-on-transient-failure. 21 tests passing.
+- Frontend (React + Vite): full buyer flow (login → browse → seat map with live SignalR updates → reserve → checkout with simulation-mode selector → order status polling). Builds clean; not exercised against a live backend (see D15-adjacent note below — no full stack was ever running simultaneously in this environment).
+- Building blocks (messaging/observability/idempotency), infra (Dockerfiles, k8s manifests, Terraform skeleton — `terraform validate` passing).
+
+**Implemented, builds clean, not independently tested in this build:**
+- Payment Service + Fake Payment Gateway (.NET): `IPaymentGateway` abstraction, resilient HTTP client (timeout→retry→circuit breaker), 5 simulation modes, webhook idempotency, EF outbox/inbox.
+- `aspire/AppHost` full-stack wiring: compiles; never run end-to-end (D15).
+
+**Known gaps, honestly, rather than silently absent:**
+- No live end-to-end run of the full purchase flow (Login → Browse → Reserve → Order → Payment → Confirm → Notification) through a running stack — this environment never had all the pieces (Docker, LocalStack, 5 live Postgres instances, all 8 services, the frontend) running simultaneously to attempt one. Every individual piece is tested in isolation instead.
+- Integration/idempotency tests beyond Ticketing's concurrency suite and the unit-level idempotency-store tests implied by Auth/Notification's suites — no dedicated `Orders.IntegrationTests`/`Payments.IntegrationTests` project exercising the Idempotency-Key HTTP behavior end-to-end via `WebApplicationFactory`.
+- SignalR Redis backplane (ADR-0007) is documented but not wired — Ticketing runs single-replica by design in both Aspire and k8s, which is consistent, not silently broken, but scaling it out would need that backplane added first.
