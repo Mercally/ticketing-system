@@ -3,9 +3,9 @@
 # against an empty data directory (see statefulset.yaml's PGDATA subpath comment for why this
 # matters when the PVC is reused).
 #
-# Per DECISIONS.md D5: local k8s runs ONE Postgres instance hosting FIVE databases (not five
+# Per DECISIONS.md D5: local k8s runs ONE Postgres instance hosting SIX databases (not six
 # separate pods, which is the Aspire-local pattern and is intentionally NOT copied here). Each
-# database gets its own role so the five services stay credential-isolated from each other even
+# database gets its own role so the six services stay credential-isolated from each other even
 # though they share a server process — a compromised/misconfigured service can only ever reach
 # its own database.
 apiVersion: v1
@@ -32,10 +32,11 @@ data:
 
     # Passwords come from the postgres-credentials Secret, mounted into this container's
     # environment via envFrom in statefulset.yaml.
-    create_db_and_role "auth"      "auth_user"      "${AUTH_DB_PASSWORD}"
-    create_db_and_role "catalog"   "catalog_user"   "${CATALOG_DB_PASSWORD}"
-    create_db_and_role "ticketing" "ticketing_user" "${TICKETING_DB_PASSWORD}"
-    create_db_and_role "orders"    "orders_user"    "${ORDERS_DB_PASSWORD}"
-    create_db_and_role "payments"  "payments_user"  "${PAYMENTS_DB_PASSWORD}"
+    create_db_and_role "auth"         "auth_user"         "${AUTH_DB_PASSWORD}"
+    create_db_and_role "catalog"      "catalog_user"      "${CATALOG_DB_PASSWORD}"
+    create_db_and_role "ticketing"    "ticketing_user"    "${TICKETING_DB_PASSWORD}"
+    create_db_and_role "orders"       "orders_user"       "${ORDERS_DB_PASSWORD}"
+    create_db_and_role "payments"     "payments_user"     "${PAYMENTS_DB_PASSWORD}"
+    create_db_and_role "notification" "notification_user" "${NOTIFICATION_DB_PASSWORD}"
 
-    echo "Created 5 databases (auth, catalog, ticketing, orders, payments) each with its own role."
+    echo "Created 6 databases (auth, catalog, ticketing, orders, payments, notification) each with its own role."
