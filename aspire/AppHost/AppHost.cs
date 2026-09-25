@@ -29,9 +29,18 @@ var notificationPg = builder.AddPostgres("notification-postgres").WithDataVolume
 var notificationDb = notificationPg.AddDatabase("notificationdb");
 
 // --- Messaging: LocalStack stands in for AWS SQS/SNS locally (ADR-0004, DECISIONS.md D4) — the
-// exact same MassTransit.AmazonSQS transport code path runs against it as against real AWS. ---
+// exact same MassTransit.AmazonSQS transport code path runs against it as against real AWS.
+//
+// Requires a LOCALSTACK_AUTH_TOKEN (DECISIONS.md D16) — the container refuses to start at all
+// without one, even for community/free services like SQS/SNS. Get a free token at
+// https://app.localstack.cloud and provide it via `dotnet user-secrets set Parameters:localstack-auth-token
+// <token>` (run from aspire/AppHost) so it's never committed — this parameter is intentionally
+// left unset by default rather than given a placeholder that would silently fail the same way. ---
+var localstackAuthToken = builder.AddParameter("localstack-auth-token", secret: true);
+
 var localstack = builder.AddContainer("localstack", "localstack/localstack")
     .WithEnvironment("SERVICES", "sqs,sns")
+    .WithEnvironment("LOCALSTACK_AUTH_TOKEN", localstackAuthToken)
     .WithHttpEndpoint(port: 4566, targetPort: 4566, name: "http");
 
 var localstackEndpoint = localstack.GetEndpoint("http");

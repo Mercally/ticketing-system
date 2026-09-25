@@ -2,6 +2,11 @@
 # points at this endpoint in Development, and the real Terraform-provisioned SQS/SNS (in
 # infrastructure/terraform/modules/sqs_sns) is what the same code path targets in AWS. No
 # persistence beyond the pod's lifetime — this is throwaway state for local validation.
+#
+# Requires LOCALSTACK_AUTH_TOKEN (DECISIONS.md D16) — see secret.yaml's comment. Without a valid
+# token the container exits immediately (code 55, "License activation failed") even though SQS/SNS
+# are community/free services; this is a LocalStack-side account requirement as of the version
+# `:latest` currently resolves to, not something this deployment can avoid.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,6 +37,11 @@ spec:
               value: "us-east-1"
             - name: PERSISTENCE
               value: "0"
+            - name: LOCALSTACK_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: localstack-secrets
+                  key: LOCALSTACK_AUTH_TOKEN
           resources:
             requests:
               cpu: 100m

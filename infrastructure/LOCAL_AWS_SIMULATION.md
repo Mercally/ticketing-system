@@ -74,7 +74,17 @@ An unauthenticated `tcp://` Docker socket is equivalent to root on that host for
 
 ## 3. Deploying LocalStack for the AWS simulation
 
-Once you're inside the cluster environment (Option A, following `infrastructure/k8s/README.md` step 4), LocalStack is already part of `infrastructure/k8s/base/localstack` — no extra step needed for SNS/SQS. Two things worth knowing:
+**Before you apply anything — LocalStack needs a free account token, or it won't start at all** (DECISIONS.md D16). If you see this on `kubectl -n ticketing logs -l app.kubernetes.io/name=localstack`:
+
+```text
+License activation failed! 🔑❌
+Reason: No credentials were found in the environment. Please make sure to either set the
+LOCALSTACK_AUTH_TOKEN variable to a valid auth token...
+```
+
+that's exactly this — and it's not a misconfiguration on your end, and not something to work around by changing `SERVICES` or anything else in this repo: as of whatever version `localstack/localstack:latest` currently resolves to, even the community/free services this platform actually uses (SQS, SNS) require the container itself to authenticate. Fix: sign up free at <https://app.localstack.cloud>, copy your auth token from the account page, and put it in `infrastructure/k8s/base/localstack/secret.yaml`'s `LOCALSTACK_AUTH_TOKEN` (it ships with an obvious placeholder — never a real token committed) before `kubectl apply -k`. If you already applied with the placeholder, update the Secret and restart the pod: `kubectl -n ticketing rollout restart deployment/localstack`.
+
+Once that's sorted, LocalStack is already part of `infrastructure/k8s/base/localstack` — no extra step needed for SNS/SQS. Two more things worth knowing:
 
 - **MassTransit auto-provisions its own topics/queues** against LocalStack the moment each .NET service boots (ADR-0004) — the `localstack-provision` Job (`infrastructure/k8s/base/localstack/provision-job.yaml`) is a best-effort convenience for pre-creating things before any service is running, not a requirement. If you see it fail or its topic names look wrong, it's safe to ignore/delete — the real topology comes from the services themselves. Confirm what MassTransit actually created with:
   ```bash
@@ -132,6 +142,7 @@ provider "aws" {
 
 ## 7. Troubleshooting
 
+- **`localstack` pod `CrashLoopBackOff`, logs say "License activation failed"**: see §3 — you need a free `LOCALSTACK_AUTH_TOKEN`.
 - **Pods stuck `Pending`**: usually resource requests exceeding what the remote host actually has free (`kubectl -n ticketing describe pod <name>` shows why). This platform's default resource requests assume a reasonably provisioned dev machine; lower them in the relevant `deployment.yaml` if the remote box is small.
 - **Frontend loads but every API call fails**: check the SSH tunnel in Option A is actually up (`ssh -N -L ...` must keep running in its own terminal/tmux pane), and that `kubectl port-forward` on the remote side didn't die silently (it does when a pod restarts — re-run it).
 - **A .NET service is `Running` but never `Ready`**: check `ASPNETCORE_ENVIRONMENT=Development` made it into the container — `aspire/ServiceDefaults` only maps `/health` in Development (see `infrastructure/k8s/base/*/configmap.yaml` comments), consistent with `infrastructure/k8s/README.md` §5's note on this.

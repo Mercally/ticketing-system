@@ -11,6 +11,7 @@ resources:
   - postgres/service.yaml
   - postgres/statefulset.yaml
 
+  - localstack/secret.yaml
   - localstack/deployment.yaml
   - localstack/service.yaml
   - localstack/provision-configmap.yaml
