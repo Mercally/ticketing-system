@@ -95,12 +95,19 @@ var gateway = builder.AddProject<Projects.Gateway_Api>("gateway")
     .WaitFor(payments);
 
 // --- NestJS services. Prisma needs a postgresql://... URL, not Npgsql's keyword-list format
-// WithReference(dbResource) would inject, so it's built directly via ReferenceExpression —
-// interpolating the server's password parameter and TCP endpoint resolves them to their actual
-// runtime values (Aspire's reference-expression interpolated-string handler), same mechanism
-// WithReference itself uses internally, just shaped as a URL instead of a keyword list. ---
-var authDbUrl = ReferenceExpression.Create($"postgresql://postgres:{authPg.Resource.PasswordParameter}@{authPg.GetEndpoint("tcp")}/authdb");
-var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{notificationPg.Resource.PasswordParameter}@{notificationPg.GetEndpoint("tcp")}/notificationdb");
+// WithReference(dbResource) would inject, so it's built directly via ReferenceExpression.
+//
+// Bare-interpolating an EndpointReference (`{authPg.GetEndpoint("tcp")}`) inside a composed
+// ReferenceExpression does NOT resolve to "host:port" the way you'd expect from WithEnvironment(
+// name, endpoint) used alone — it previously produced the literal string "tcp:5432" (the
+// endpoint's scheme + container-internal target port), which is not reachable from the
+// auth-service/notification-service OS processes Prisma runs in (they need the HOST-mapped port,
+// e.g. "localhost:65334", not the container's own port 5432). The fix, per Aspire's docs
+// ("Resource Hierarchies" — EndpointReferenceExpression), is to request the composite value
+// explicitly via .Property(EndpointProperty.HostAndPort) rather than interpolating the bare
+// EndpointReference. ---
+var authDbUrl = ReferenceExpression.Create($"postgresql://postgres:{authPg.Resource.PasswordParameter}@{authPg.GetEndpoint("tcp").Property(EndpointProperty.HostAndPort)}/authdb");
+var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{notificationPg.Resource.PasswordParameter}@{notificationPg.GetEndpoint("tcp").Property(EndpointProperty.HostAndPort)}/notificationdb");
 
 // JWT_SECRET is required (env.validation.ts) with no default — unlike LOCALSTACK_AUTH_TOKEN this
 // needs no external account, only internal consistency (the same value signs and verifies tokens
