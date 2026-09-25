@@ -1,0 +1,37 @@
+# Second, SEPARATE LocalStack instance — host-level, outside `kind` — dedicated to API Gateway +
+# Lambda + S3 (the AWS "edge" simulation). The in-cluster LocalStack
+# (infrastructure/k8s/base/localstack) keeps doing SQS/SNS for the order saga; it is NOT touched
+# or replaced by this file.
+#
+# Why a second instance instead of adding apigateway/lambda/s3 to the in-cluster one: LocalStack's
+# Lambda support spawns sibling Docker containers via the host's docker.sock. The in-cluster
+# LocalStack pod lives on kind's pod network (Calico/kindnet overlay) — a Lambda container spawned
+# on the underlying host's Docker network has no route back to that pod network. Running LocalStack
+# here, as a plain sibling container on the real host Docker daemon, sidesteps that entirely: this
+# is the standard, documented way LocalStack Lambda execution works, no extra networking needed.
+#
+# Reuses the same LOCALSTACK_AUTH_TOKEN already in infrastructure/k8s/base/localstack/secret.yaml
+# (LocalStack requires one even for community-tier services — DECISIONS.md D16). Same edge port
+# (4566) as the in-cluster instance is fine since these are two different Docker networks (one
+# inside a kind node, this one on the host) — they never collide.
+# KNOWN GAP, verified by hand (2026-09-25): LocalStack's REST API v1 custom-authorizer
+# enforcement (both the default "next_gen" provider and PROVIDER_OVERRIDE_APIGATEWAY=legacy) does
+# not invoke the Lambda authorizer for HTTP_PROXY {proxy+} methods in this LocalStack build/edition
+# — verified via debug logs (the handler chain never reaches an authorizer step) and by invoking
+# the Lambda directly (`aws lambda invoke`), which correctly rejects a bad token. The Terraform
+# wiring (aws_api_gateway_authorizer, identity_source, per-method authorization = "CUSTOM") is
+# API-correct and should enforce against real AWS unchanged — this is a LocalStack emulation gap,
+# not a config bug here. See DECISIONS.md D17 and infrastructure/aws-local/README.md.
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: ticketing-localstack-edge
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: "apigateway,lambda,s3,iam,sts"
+      LOCALSTACK_AUTH_TOKEN: "${LOCALSTACK_AUTH_TOKEN:?set this to the same token as infrastructure/k8s/base/localstack/secret.yaml}"
+      DEFAULT_REGION: us-east-1
+      LAMBDA_EXECUTOR: docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

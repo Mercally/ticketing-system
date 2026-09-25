@@ -13,3 +13,7 @@ data:
   # Region/AccessKey/SecretKey are left unset — AwsMessagingOptions' code defaults
   # ("us-east-1"/"test"/"test") already match what LocalStack needs.
   Messaging__Aws__ServiceUrl: "http://localstack:4566"
+
+  # DECISIONS.md D17: API Gateway calls this service directly now (no YARP in front doing CORS).
+  # Matches the S3 static-site origin hosting the frontend (infrastructure/aws-local).
+  ALLOWED_ORIGINS: "http://ticketing-frontend-local.s3-website.localhost.localstack.cloud:4566"

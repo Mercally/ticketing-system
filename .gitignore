@@ -21,6 +21,10 @@ dist/
 *.tfstate
 *.tfstate.*
 *.tfvars
+tfplan
+
+# Lambda build artifacts (zipped from source at apply time, e.g. infrastructure/aws-local/lambda)
+infrastructure/aws-local/lambda/**/*.zip
 
 # OS
 .DS_Store

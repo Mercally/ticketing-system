@@ -1,0 +1,10 @@
+{
+  "name": "api-gateway-jwt-authorizer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API Gateway TOKEN authorizer validating auth-service's HS256 JWTs (infra/aws-local, LocalStack-only for now).",
+  "main": "index.js",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  }
+}

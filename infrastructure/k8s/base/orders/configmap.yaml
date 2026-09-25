@@ -10,3 +10,7 @@ data:
   # form and not a flat AWS_ENDPOINT_URL — the latter silently never binds to AwsMessagingOptions.
   Messaging__Aws__ServiceUrl: "http://localstack:4566"
   # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.
+
+  # DECISIONS.md D17: API Gateway calls this service directly now (no YARP in front doing CORS).
+  # Matches the S3 static-site origin hosting the frontend (infrastructure/aws-local).
+  ALLOWED_ORIGINS: "http://ticketing-frontend-local.s3-website.localhost.localstack.cloud:4566"

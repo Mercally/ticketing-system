@@ -8,3 +8,7 @@ data:
   NODE_ENV: "production"
   # No OTel Collector deployed in this k8s scaffold — see gateway/configmap.yaml for the same note.
   # OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+
+  # DECISIONS.md D17: API Gateway calls this service directly now (no YARP in front doing CORS).
+  # Matches the S3 static-site origin hosting the frontend (infrastructure/aws-local).
+  ALLOWED_ORIGINS: "http://ticketing-frontend-local.s3-website.localhost.localstack.cloud:4566"

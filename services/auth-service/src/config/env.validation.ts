@@ -37,6 +37,10 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   OTEL_EXPORTER_OTLP_ENDPOINT?: string;
+
+  @IsOptional()
+  @IsString()
+  ALLOWED_ORIGINS?: string;
 }
 
 /**

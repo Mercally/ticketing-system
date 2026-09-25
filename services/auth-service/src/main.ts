@@ -19,6 +19,11 @@ async function bootstrap() {
   );
 
   const config = app.get(ConfigService<AppConfig, true>);
+
+  // Needed as of DECISIONS.md D17 (k8s: API Gateway calls this service directly, no YARP hop
+  // doing CORS in front anymore). Harmless in Aspire dev, where YARP still fronts this service.
+  app.enableCors({ origin: config.get('allowedOrigins', { infer: true }) });
+
   await app.listen(config.get('port', { infer: true }));
 }
 

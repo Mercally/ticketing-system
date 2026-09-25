@@ -18,3 +18,7 @@ data:
   # the "http://localhost:5006" default, which inside the payments pod points at nothing.
   FakePaymentGateway__BaseUrl: "http://fakepaymentgateway:5006"
   # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.
+
+  # DECISIONS.md D17: API Gateway calls this service directly now (no YARP in front doing CORS).
+  # Matches the S3 static-site origin hosting the frontend (infrastructure/aws-local).
+  ALLOWED_ORIGINS: "http://ticketing-frontend-local.s3-website.localhost.localstack.cloud:4566"

@@ -1,5 +1,6 @@
 export interface AppConfig {
   port: number;
+  allowedOrigins: string[];
   database: {
     url: string;
   };
@@ -22,6 +23,12 @@ export interface AppConfig {
 export function configuration(): AppConfig {
   return {
     port: parseInt(process.env.PORT ?? '5001', 10),
+    // Needed as of DECISIONS.md D17 (k8s: API Gateway calls this service directly, no YARP hop
+    // doing CORS in front anymore). Harmless in Aspire dev, where YARP still fronts this service.
+    allowedOrigins: (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
     database: {
       url: process.env.DATABASE_URL ?? '',
     },
