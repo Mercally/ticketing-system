@@ -102,6 +102,15 @@ var gateway = builder.AddProject<Projects.Gateway_Api>("gateway")
 var authDbUrl = ReferenceExpression.Create($"postgresql://postgres:{authPg.Resource.PasswordParameter}@{authPg.GetEndpoint("tcp")}/authdb");
 var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{notificationPg.Resource.PasswordParameter}@{notificationPg.GetEndpoint("tcp")}/notificationdb");
 
+// JWT_SECRET is required (env.validation.ts) with no default — unlike LOCALSTACK_AUTH_TOKEN this
+// needs no external account, only internal consistency (the same value signs and verifies tokens
+// within one running instance), so it ships with a local-dev default (same placeholder string as
+// infrastructure/k8s/base/auth-service/secret.yaml, for consistency) rather than forcing a
+// user-secrets step just to get the service to boot. Still declared `secret: true` so it doesn't
+// print in plaintext anywhere in the dashboard. Override with
+// `dotnet user-secrets set Parameters:jwt-secret <value>` if you want a different one.
+var jwtSecret = builder.AddParameter("jwt-secret", "local-dev-only-jwt-secret-change-me", secret: true);
+
 // No AWS/LocalStack wiring here on purpose — Auth Service is architecturally isolated from
 // messaging (ARCHITECTURE.md §4: it publishes no events, has no MassTransit/AWS SDK dependency
 // at all). It must never WaitFor(localstack): doing so previously made it block startup on
@@ -112,6 +121,7 @@ var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{noti
 var authService = builder.AddNpmApp("auth-service", "../../services/auth-service", "start:dev")
     .WithHttpEndpoint(env: "PORT", port: 5001)
     .WithEnvironment("DATABASE_URL", authDbUrl)
+    .WithEnvironment("JWT_SECRET", jwtSecret)
     .WaitFor(authDb);
 
 var notificationService = builder.AddNpmApp("notification-service", "../../services/notification-service", "start:dev")
