@@ -34,16 +34,17 @@ public sealed class EfIdempotencyStore(PaymentsDbContext db) : IIdempotencyStore
 
     public async Task CompleteAsync(string endpoint, string key, int statusCode, string responseBody, string contentType, CancellationToken cancellationToken)
     {
-        var affected = await db.IdempotencyKeys
-            .Where(k => k.Endpoint == endpoint && k.Key == key)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(k => k.StatusCode, statusCode)
-                .SetProperty(k => k.ResponseBody, responseBody)
-                .SetProperty(k => k.ResponseContentType, contentType), cancellationToken);
+        // ExecuteUpdateAsync would bypass SaveChangesAsync (and with it, MassTransit's EF Core bus
+        // outbox — Publish() calls made earlier in this request are only flushed to OutboxMessage
+        // when THIS DbContext's SaveChangesAsync runs). Go through the tracked entity instead so
+        // this write and the buffered outbox message commit together.
+        var record = await db.IdempotencyKeys.FirstOrDefaultAsync(k => k.Endpoint == endpoint && k.Key == key, cancellationToken)
+            ?? throw new InvalidOperationException($"Idempotency key record not found for completion: {endpoint} {key}");
 
-        if (affected == 0)
-        {
-            throw new InvalidOperationException($"Idempotency key record not found for completion: {endpoint} {key}");
-        }
+        record.StatusCode = statusCode;
+        record.ResponseBody = responseBody;
+        record.ResponseContentType = contentType;
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 }
