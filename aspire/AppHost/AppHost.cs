@@ -126,10 +126,18 @@ gateway
     .WaitFor(authService);
 
 // --- Frontend (Vite dev server) ---
-builder.AddNpmApp("frontend", "../../apps/frontend", "dev")
+var frontend = builder.AddNpmApp("frontend", "../../apps/frontend", "dev")
     .WithHttpEndpoint(env: "PORT", port: 5173)
     .WithEnvironment("VITE_API_BASE_URL", gateway.GetEndpoint("http"))
     .WaitFor(gateway)
     .WithExternalHttpEndpoints();
+
+// Gateway's CORS allow-list must match the frontend's ACTUAL origin, not a hardcoded guess — if
+// port 5173 is already taken on the host, Vite silently falls back to 5174/5175/... (it doesn't
+// read the PORT env var above by default; see apps/frontend/vite.config.ts), and a stale
+// hardcoded ALLOWED_ORIGINS would make every browser request fail CORS preflight with no useful
+// error beyond "Network error" in the frontend. Wiring it from the real resolved endpoint closes
+// that gap regardless of which port Vite actually bound to.
+gateway.WithEnvironment("ALLOWED_ORIGINS", frontend.GetEndpoint("http"));
 
 await builder.Build().RunAsync();
