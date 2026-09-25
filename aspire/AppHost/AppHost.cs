@@ -77,8 +77,14 @@ var payments = builder.AddProject<Projects.Payments_Api>("payments")
     .WithEnvironment("Messaging__Aws__ServiceUrl", localstackEndpoint)
     .WaitFor(localstack)
     .WithReference(fakePaymentGateway)
-    .WithEnvironment("FakePaymentGateway__BaseUrl", fakePaymentGateway.GetEndpoint("http"))
-    .WithEnvironment("PaymentService__WebhookUrl", "http://localhost:5005/webhook");
+    .WithEnvironment("FakePaymentGateway__BaseUrl", fakePaymentGateway.GetEndpoint("http"));
+
+// DuplicateCallback simulation mode has FakePaymentGateway.Api POST a second webhook back to
+// Payments' own /webhook route — that env var is read by FakePaymentGateway.Api (see its
+// Program.cs), not by Payments itself, so it belongs on THIS resource, not on `payments` above
+// (where it previously sat unread). It was also hardcoded to "localhost:5005", which never
+// matched Payments' actual Aspire-assigned port — resolve it from the real endpoint instead.
+fakePaymentGateway.WithEnvironment("PaymentService__WebhookUrl", ReferenceExpression.Create($"{payments.GetEndpoint("http")}/webhook"));
 
 // --- Gateway: routes to every service above by env-var-configured address (docs/CONTRACTS.md §1
 // — the same AUTH_SERVICE_URL/etc names infrastructure/k8s/base/gateway/configmap.yaml sets). ---
