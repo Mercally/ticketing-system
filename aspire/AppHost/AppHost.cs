@@ -102,12 +102,17 @@ var gateway = builder.AddProject<Projects.Gateway_Api>("gateway")
 var authDbUrl = ReferenceExpression.Create($"postgresql://postgres:{authPg.Resource.PasswordParameter}@{authPg.GetEndpoint("tcp")}/authdb");
 var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{notificationPg.Resource.PasswordParameter}@{notificationPg.GetEndpoint("tcp")}/notificationdb");
 
+// No AWS/LocalStack wiring here on purpose — Auth Service is architecturally isolated from
+// messaging (ARCHITECTURE.md §4: it publishes no events, has no MassTransit/AWS SDK dependency
+// at all). It must never WaitFor(localstack): doing so previously made it block startup on
+// LocalStack's health, which fails without a LOCALSTACK_AUTH_TOKEN (DECISIONS.md D16) — auth-service
+// would then never actually start listening, Gateway would 502 proxying to it, and the frontend
+// would surface that as a network error on login/register, even though Auth Service itself has
+// nothing to do with LocalStack.
 var authService = builder.AddNpmApp("auth-service", "../../services/auth-service", "start:dev")
     .WithHttpEndpoint(env: "PORT", port: 5001)
     .WithEnvironment("DATABASE_URL", authDbUrl)
-    .WaitFor(authDb)
-    .WithEnvironment("AWS_ENDPOINT_URL", localstackEndpoint)
-    .WaitFor(localstack);
+    .WaitFor(authDb);
 
 var notificationService = builder.AddNpmApp("notification-service", "../../services/notification-service", "start:dev")
     .WithHttpEndpoint(env: "PORT", port: 5007)
