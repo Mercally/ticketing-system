@@ -8,10 +8,11 @@ This is for testing the full platform against a **simulated AWS** locally — EK
 |---|---|
 | EKS | `kind` (Kubernetes-in-Docker) — a real Kubernetes API, real Deployments/Services, just running as containers instead of EC2/Fargate nodes |
 | SNS + SQS | LocalStack (`infrastructure/k8s/base/localstack`) — MassTransit's `MassTransit.AmazonSQS` transport runs the **exact same code path** against it as against real AWS (ADR-0004); only the endpoint URL differs |
-| S3 | LocalStack can emulate it too (`SERVICES=sqs,sns,s3`), but **no service in this codebase actually calls S3** — the only S3 reference in the repo is `infrastructure/terraform/modules/cloudfront_waf` (a CloudFront access-log bucket). Enable it only if you specifically want to exercise that Terraform module against LocalStack (§6) — it's not needed for the application to run. |
+| S3 | Also serves the frontend's static site for the k8s+API Gateway path — see `infrastructure/aws-local/README.md`. Otherwise, no service in this codebase calls S3 directly (the only other reference is `infrastructure/terraform/modules/cloudfront_waf`'s access-log bucket). |
 | RDS (5 independent instances) | The single Postgres `StatefulSet` in `infrastructure/k8s/base/postgres` (5 databases, one instance — DECISIONS.md D5's local-k8s compromise) |
 | Secrets Manager | Plain Kubernetes `Secret` objects in `infrastructure/k8s/base/*/secret.yaml` (placeholder values — never real secrets) |
-| CloudFront / WAF / API Gateway | Not simulated locally — the Gateway service (YARP) plays this role directly (ADR-0008); see `ARCHITECTURE.md` §9 |
+| API Gateway | **Simulated for real as of DECISIONS.md D17** — a second, host-level LocalStack instance (`infrastructure/aws-local`) runs it (plus a Lambda JWT authorizer), replacing YARP entirely for the k8s path. Aspire dev still uses YARP as the stand-in, unchanged. |
+| CloudFront / WAF | Still not simulated locally in either environment — YARP (Aspire) / API Gateway's own CORS+throttling (k8s) approximate the pieces of their role that matter for local validation; see `ARCHITECTURE.md` §9 |
 
 ## 2. The remote-Docker-host caveat (read this before anything else)
 

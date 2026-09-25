@@ -101,6 +101,13 @@ Development — see e.g. `base/gateway/configmap.yaml`'s comment) and check the 
 
 ## 6. Reach it from a browser
 
+**As of DECISIONS.md D17, this is no longer the primary way in.** Gateway (YARP) stays deployed
+here — everything below still works exactly as described, and it's the quickest way to poke at
+the k8s deployment directly — but the actual front door is now a real API Gateway (via
+LocalStack) plus the frontend hosted on S3, both outside this cluster. See
+`infrastructure/aws-local/README.md` for that path. This section is kept for direct
+service-to-service debugging and as a fallback.
+
 ### Ingress vs. NodePort — the choice made here, and the trade-off
 
 Two ways to expose Gateway (and Frontend) to a browser outside the cluster were on the table:

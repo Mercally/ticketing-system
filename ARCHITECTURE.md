@@ -264,7 +264,18 @@ flowchart LR
     AGW --> SVC[Services]
 ```
 
-Locally (Aspire/K8s), CloudFront+WAF are not run (no AWS locally); their role is played by the **Gateway** service (YARP), which implements:
+Locally, this diagram is approximated differently per environment (DECISIONS.md D17):
+
+- **Aspire dev**: CloudFront/WAF/API Gateway aren't run; their role is played by the **Gateway**
+  service (YARP), which implements the bullets below.
+- **K8s**: a real **API Gateway** runs too, via LocalStack (`infrastructure/aws-local`) — 5 direct
+  routes replacing YARP entirely, plus a Lambda JWT authorizer (new enforcement — neither YARP nor
+  any downstream service validated JWTs before this). Rate limiting/waiting room/WAF-equivalent
+  checks don't carry over 1:1 to API Gateway; see D17 for exactly what did and didn't move, and
+  why. Aspire is unaffected — it keeps YARP doing everything below, unchanged.
+
+What YARP implements, in the environment where it's still the edge (Aspire dev, and previously
+K8s too):
 
 - **Rate limiting**: ASP.NET Core built-in `Microsoft.AspNetCore.RateLimiting` (sliding window per IP/user, no extra dependency).
 - **Load shedding**: fixed-size request queue per route; requests beyond queue depth get `503` with `Retry-After` immediately rather than queuing indefinitely.

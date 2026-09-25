@@ -81,6 +81,62 @@ Discovered running this against a real Docker host (not something this build's s
 
 Neither location has (or should ever have) a real token checked in — this is credential-shaped even though it only unlocks a free tier, so it's handled exactly like every other secret in this repo (placeholder in git, real value supplied locally).
 
+## D17 — K8s uses a real API Gateway (LocalStack) instead of YARP; Aspire keeps YARP
+
+Both Aspire dev and the k8s deployment were validated end-to-end (full register → login →
+browse → reserve → pay/decline → notification flow, live, against running infrastructure — see
+`infrastructure/k8s/README.md` and `infrastructure/aws-local/README.md` for how). With both
+working identically via YARP, the k8s path was deliberately changed to exercise a real AWS
+service instead: **API Gateway (via LocalStack) replaces YARP entirely for k8s**, while **Aspire
+keeps YARP unchanged** — a genuine hands-on exercise with API Gateway, reusable against real AWS
+later, not a correctness fix. Full gap accounting (what this traded away, what's still fragile):
+[`docs/ARCHITECTURE_GAPS.md`](docs/ARCHITECTURE_GAPS.md).
+
+**What moved**: routing (5 direct `HTTP_PROXY` integrations — auth/catalog/ticketing/orders/
+payments — instead of YARP's in-memory route table) and JWT authentication (a new Lambda
+authorizer — see the honesty note below). **What stayed put**: the 4 .NET services + auth-service
+gained their own CORS middleware (`ALLOWED_ORIGINS`) since `HTTP_PROXY` can't inject headers on
+a passthrough response the way YARP's own CORS middleware could; harmless in Aspire, where YARP
+still fronts every request and the browser never reaches these services' origins directly.
+
+**What did NOT come along, and why that's an accepted cut for this exercise, not an oversight**:
+- **Per-IP rate limiting** (YARP's `SlidingWindowLimiter`) has no direct API Gateway equivalent
+  for a public frontend with no API keys — real per-IP throttling needs a WAF rate-based rule
+  (`modules/cloudfront_waf` already exists for the real-AWS target), out of scope for this pass.
+  API Gateway's own stage-level throttle settings are a coarser, global approximation.
+- **The Redis-backed waiting room** (ADR-0008, `/api/ticketing/*` only) has no home in a
+  YARP-less k8s path. It was already documented as a "PoC scope-cut" that **fails open** by
+  design and is explicitly non-load-bearing for correctness (real seat-exclusivity is
+  Ticketing's own Postgres CAS, ADR-0002) — dropping it here doesn't weaken anything the system
+  actually guarantees.
+- **The SignalR seat-availability hub** doesn't work through a REST API Gateway (`HTTP_PROXY`
+  doesn't support WebSocket upgrade the way a plain proxy does — a WebSocket API is a distinct
+  API Gateway resource type). Already had a silent fallback (best-effort live UX only, never
+  blocks browsing/reserving) — it degrades exactly as designed, doesn't break anything.
+
+**Honesty note on the Lambda authorizer** (found running this against a real LocalStack
+instance, not guessed at): the Terraform (`infrastructure/terraform/modules/api_gateway_local`)
+correctly wires an `aws_api_gateway_authorizer` (tried both `TOKEN` and `REQUEST` types) to the
+protected routes, and the Lambda itself is correct and verified working in isolation
+(`aws lambda invoke` against it correctly rejects a bad JWT). But LocalStack's actual REST API
+request pipeline — verified via debug logs showing the handler chain never reaches an authorizer
+step, under both its default ("next_gen") and `PROVIDER_OVERRIDE_APIGATEWAY=legacy` API Gateway
+providers — never invokes the authorizer for `HTTP_PROXY` `{proxy+}` methods in this LocalStack
+build (`2026.8.4`, pro edition). This is a LocalStack emulation gap, not a config mistake here —
+the same Terraform should enforce correctly against real AWS unchanged. See
+`infrastructure/aws-local/docker-compose.yaml`'s header comment for the verification detail.
+
+**Also found and fixed while wiring this** (unrelated to LocalStack, a real pre-existing bug):
+`AppHost.cs`'s `PaymentService__WebhookUrl` env var was set on the wrong Aspire resource
+(`payments`, when `FakePaymentGateway.Api` is what actually reads it) and hardcoded to a stale
+port that never matched Payments' real Aspire-assigned address — only ever exercised by the
+`DuplicateCallback` payment-simulation mode, which is why it went unnoticed. Fixed regardless of
+this k8s work, since it affects Aspire too.
+
+**Also found**: neither YARP nor any downstream service (ticketing/orders) actually validates a
+JWT today, despite `JWT_SECRET` being provisioned (and unused) in ticketing/orders' own k8s
+secrets — the Lambda authorizer is genuinely new enforcement, not a relocation of existing logic.
+
 ## Build status snapshot
 
 This section is updated as work proceeds; treat it as the current source of truth for "what's actually done" vs. "what's scaffolded."

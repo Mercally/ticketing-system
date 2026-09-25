@@ -56,6 +56,8 @@ kubectl apply -k infrastructure/k8s/overlays/local
 
 Full instructions, including how to reach the frontend/gateway and what to check once it's up, in [infrastructure/k8s/README.md](infrastructure/k8s/README.md). Testing against a **remote** Docker host instead of local Docker (simulating EKS/SNS/S3 without a real AWS account) has its own guide: [infrastructure/LOCAL_AWS_SIMULATION.md](infrastructure/LOCAL_AWS_SIMULATION.md).
 
+**Third piece — a real API Gateway in front of the k8s deployment** (DECISIONS.md D17): once the cluster above is up, [infrastructure/aws-local/README.md](infrastructure/aws-local/README.md) replaces YARP with an actual AWS API Gateway (+ Lambda JWT authorizer, + the frontend on S3) via a second, host-level LocalStack instance — the same Terraform module is meant to be reapplied against real AWS later. Aspire dev is unaffected; it keeps YARP.
+
 ## Running the tests
 
 ```bash
