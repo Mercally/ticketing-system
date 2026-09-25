@@ -6,6 +6,7 @@ import { getErrorMessage } from '../lib/errors';
 import { useAuthStore } from '../stores/authStore';
 import { useCheckoutStore } from '../stores/checkoutStore';
 import { PAYMENT_SIMULATION_MODES, type CreateOrderResponse, type PaymentSimulationMode } from '../types/api';
+import { generateUuid } from '../lib/uuid';
 
 // No pricing data exists anywhere in the contracts (Catalog/Ticketing never return
 // a price) — this is a fixed demo amount, as the spec explicitly allows.
@@ -40,7 +41,7 @@ export function CheckoutPage() {
         throw new Error('Missing reservation or buyer information.');
       }
       // Fresh Idempotency-Key per buy click.
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = generateUuid();
       const response = await apiClient.post<CreateOrderResponse>(
         '/api/orders',
         {

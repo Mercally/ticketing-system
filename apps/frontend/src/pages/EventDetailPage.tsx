@@ -7,6 +7,7 @@ import { getErrorMessage } from '../lib/errors';
 import { useSeatAvailabilityHub } from '../hooks/useSeatAvailabilityHub';
 import { useAuthStore } from '../stores/authStore';
 import { useCheckoutStore } from '../stores/checkoutStore';
+import { generateUuid } from '../lib/uuid';
 import type {
   EventDetail,
   ReserveSeatResponse,
@@ -72,7 +73,7 @@ export function EventDetailPage() {
   const reserveMutation = useMutation({
     mutationFn: async (seat: Seat) => {
       // Fresh Idempotency-Key per reserve click (not reused across separate clicks).
-      const idempotencyKey = crypto.randomUUID();
+      const idempotencyKey = generateUuid();
       const response = await apiClient.post<ReserveSeatResponse>(
         '/api/ticketing/reservations',
         { eventId, seatId: seat.id, buyerId },

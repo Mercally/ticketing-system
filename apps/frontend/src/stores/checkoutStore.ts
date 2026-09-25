@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateUuid } from '../lib/uuid';
 
 /**
  * Short-lived info about the buyer's current in-flight reservation, carried from
@@ -39,7 +40,7 @@ export const useCheckoutStore = create<CheckoutState>((set) => ({
   correlationId: null,
   reservation: null,
   startCheckout: () => {
-    const id = crypto.randomUUID();
+    const id = generateUuid();
     set({ correlationId: id, reservation: null });
     return id;
   },
