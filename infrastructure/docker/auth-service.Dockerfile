@@ -5,11 +5,10 @@
 #
 # Port: 5001 (docs/CONTRACTS.md §1).
 #
-# NOTE: as of writing, services/auth-service has no prisma/schema.prisma yet (it's mid-build by
-# another parallel workstream — see ARCHITECTURE.md §4 / the prompt's Auth Service requirements).
-# `npx prisma generate` below is conditional on that file existing so this Dockerfile is buildable
-# both today (schema absent) and once Prisma lands, with no edits required here. `npm ci` requires
-# a package-lock.json to be committed alongside package.json — also expected to land with that work.
+# `npx prisma generate` is conditional on prisma/schema.prisma existing so this Dockerfile stays
+# buildable even without a schema. `prisma` (the CLI, not just @prisma/client) is a runtime
+# dependency here on purpose — the entrypoint runs `prisma migrate deploy` before starting the
+# app, same as the AppHost's start:dev script does for local Aspire dev.
 
 FROM node:22-alpine AS build
 WORKDIR /app
@@ -35,7 +34,12 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+# @prisma/client's postinstall (triggered above by `npm ci --omit=dev`) runs before
+# prisma/schema.prisma is even copied into this stage, so it has nothing to generate against —
+# copy the client already generated in the build stage (against the same alpine/musl base image)
+# instead of relying on that postinstall step.
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 5001
 
-ENTRYPOINT ["node", "dist/main.js"]
+ENTRYPOINT ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
