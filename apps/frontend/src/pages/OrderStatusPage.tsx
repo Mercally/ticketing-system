@@ -1,12 +1,25 @@
+import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errors';
 import type { OrderDetail, OrderStatus } from '../types/api';
 
-async function fetchOrder(orderId: string): Promise<OrderDetail> {
-  const response = await apiClient.get<OrderDetail>(`/api/orders/${orderId}`);
-  return response.data;
+// A 404 right after Create Order is expected, not an error (ADR-0003 eventual
+// consistency / OrderSubmissionService's doc comment): the saga row is created
+// asynchronously after the message is consumed. Treat it as "not created yet"
+// so the polling UI stays in a loading state instead of flashing a scary
+// error while the saga catches up.
+async function fetchOrder(orderId: string): Promise<OrderDetail | null> {
+  try {
+    const response = await apiClient.get<OrderDetail>(`/api/orders/${orderId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 const TERMINAL_STATUSES: OrderStatus[] = ['Completed', 'Cancelled'];
@@ -63,6 +76,10 @@ export function OrderStatusPage() {
 
   if (orderQuery.isError) {
     return <p className="form-error">{getErrorMessage(orderQuery.error)}</p>;
+  }
+
+  if (orderQuery.data === null) {
+    return <p>Setting up your order…</p>;
   }
 
   const order = orderQuery.data;
