@@ -13,6 +13,8 @@ dist/
 
 # Aspire
 .aspire/
+.agents/skills/aspire*/
+.github/skills/aspire*/
 
 # Terraform
 .terraform/
@@ -27,3 +29,10 @@ dist/
 .idea/
 *.swp
 .claude/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+# Playwright MCP session output (console logs, page snapshots)
+.playwright-mcp/
+
+# Personal editor config (MCP server wiring lives in root .mcp.json, shared)
+.vscode/
