@@ -6,8 +6,7 @@ metadata:
 data:
   ASPNETCORE_ENVIRONMENT: "Development"
 
-  AWS_ENDPOINT_URL: "http://localstack:4566"
-  AWS_REGION: "us-east-1"
-  AWS_ACCESS_KEY_ID: "test"
-  AWS_SECRET_ACCESS_KEY: "test"
+  # See ticketing/configmap.yaml for why this is the double-underscore Messaging__Aws__ServiceUrl
+  # form and not a flat AWS_ENDPOINT_URL — the latter silently never binds to AwsMessagingOptions.
+  Messaging__Aws__ServiceUrl: "http://localstack:4566"
   # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

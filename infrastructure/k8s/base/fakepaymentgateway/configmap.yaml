@@ -5,4 +5,10 @@ metadata:
   namespace: ticketing
 data:
   ASPNETCORE_ENVIRONMENT: "Development"
+
+  # DuplicateCallback simulation mode POSTs a second webhook back to Payments' own /webhook route
+  # (FakePaymentGateway.Api/Program.cs reads Configuration["PaymentService:WebhookUrl"], which
+  # needs the double-underscore env var form below). Payments' k8s Service DNS name + its
+  # containerPort (payments/deployment.yaml: 5005).
+  PaymentService__WebhookUrl: "http://payments:5005/webhook"
   # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

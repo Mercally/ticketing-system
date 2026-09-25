@@ -6,12 +6,15 @@ metadata:
 data:
   ASPNETCORE_ENVIRONMENT: "Development"
 
-  AWS_ENDPOINT_URL: "http://localstack:4566"
-  AWS_REGION: "us-east-1"
-  AWS_ACCESS_KEY_ID: "test"
-  AWS_SECRET_ACCESS_KEY: "test"
+  # See ticketing/configmap.yaml for why this is the double-underscore Messaging__Aws__ServiceUrl
+  # form and not a flat AWS_ENDPOINT_URL — the latter silently never binds to AwsMessagingOptions.
+  Messaging__Aws__ServiceUrl: "http://localstack:4566"
 
   # Payments -> Fake Payment Gateway, over real HTTP (DECISIONS.md D2 — a separate process so the
   # Polly resilience pipeline has a genuine network hop to time out / trip a circuit breaker on).
-  FAKE_PAYMENT_GATEWAY_URL: "http://fakepaymentgateway:5006"
+  # Key name matters: Payments.Api/Program.cs reads Configuration["FakePaymentGateway:BaseUrl"],
+  # which .NET's env-var config provider only binds from the double-underscore form below — a
+  # flat FAKE_PAYMENT_GATEWAY_URL (the previous value here) silently never binds, falling back to
+  # the "http://localhost:5006" default, which inside the payments pod points at nothing.
+  FakePaymentGateway__BaseUrl: "http://fakepaymentgateway:5006"
   # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.

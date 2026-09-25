@@ -25,6 +25,13 @@ data:
   ORDERS_SERVICE_URL: "http://orders:5004"
   PAYMENTS_SERVICE_URL: "http://payments:5005"
 
+  # Program.cs falls back to "http://localhost:5173" (Vite's dev port) when this is unset — wrong
+  # for k8s, where the browser reaches the built frontend at the NodePort/port-forward convention
+  # documented in infrastructure/k8s/README.md (30173), not 5173. Without this, every browser
+  # request from the frontend fails CORS preflight (same class of bug already hit and fixed for
+  # Aspire dev — see git history on services/gateway).
+  ALLOWED_ORIGINS: "http://localhost:30173"
+
   # No OTel Collector is deployed in this k8s scaffold (out of scope for this pass — Aspire's
   # own dashboard is the primary local observability experience per ARCHITECTURE.md §12). Leaving
   # this unset means aspire/ServiceDefaults' AddOpenTelemetryExporters() simply skips exporting

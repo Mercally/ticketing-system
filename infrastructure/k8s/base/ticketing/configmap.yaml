@@ -6,10 +6,10 @@ metadata:
 data:
   ASPNETCORE_ENVIRONMENT: "Development"
 
-  # LocalStack SQS/SNS endpoint (DECISIONS.md D4). Dummy LocalStack credentials — not real AWS
-  # creds, safe to keep non-secret.
-  AWS_ENDPOINT_URL: "http://localstack:4566"
-  AWS_REGION: "us-east-1"
-  AWS_ACCESS_KEY_ID: "test"
-  AWS_SECRET_ACCESS_KEY: "test"
-  # See gateway/configmap.yaml for the OTEL_EXPORTER_OTLP_ENDPOINT note.
+  # LocalStack SQS/SNS endpoint (DECISIONS.md D4). building-blocks/messaging's AwsMessagingOptions
+  # binds from config section "Messaging:Aws" — .NET's env-var provider only maps THIS
+  # double-underscore form to that section, not a flat AWS_ENDPOINT_URL (which silently never
+  # binds, leaving ServiceUrl null and MassTransit pointed at real AWS instead of LocalStack).
+  # Region/AccessKey/SecretKey are left unset — AwsMessagingOptions' code defaults
+  # ("us-east-1"/"test"/"test") already match what LocalStack needs.
+  Messaging__Aws__ServiceUrl: "http://localstack:4566"
