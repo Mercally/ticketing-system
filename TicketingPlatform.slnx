@@ -7,6 +7,9 @@
     <Project Path="aspire/ServiceDefaults/TicketingPlatform.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/building-blocks/" />
+  <Folder Name="/building-blocks/auth/">
+    <Project Path="building-blocks/auth/TicketingPlatform.Auth.csproj" />
+  </Folder>
   <Folder Name="/building-blocks/idempotency/">
     <Project Path="building-blocks/idempotency/TicketingPlatform.Idempotency.csproj" />
   </Folder>
