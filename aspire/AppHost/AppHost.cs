@@ -124,6 +124,12 @@ var notificationDbUrl = ReferenceExpression.Create($"postgresql://postgres:{noti
 // `dotnet user-secrets set Parameters:jwt-secret <value>` if you want a different one.
 var jwtSecret = builder.AddParameter("jwt-secret", "local-dev-only-jwt-secret-change-me", secret: true);
 
+// Ticketing and Orders validate this JWT themselves now (building-blocks/auth) — auth-service is
+// the only issuer, everyone who needs to check a token shares this same secret with it. Catalog
+// (public browsing) and Payments (its only HTTP surface isn't buyer-facing) don't need it.
+ticketing.WithEnvironment("JWT_SECRET", jwtSecret);
+orders.WithEnvironment("JWT_SECRET", jwtSecret);
+
 // No AWS/LocalStack wiring here on purpose — Auth Service is architecturally isolated from
 // messaging (ARCHITECTURE.md §4: it publishes no events, has no MassTransit/AWS SDK dependency
 // at all). It must never WaitFor(localstack): doing so previously made it block startup on

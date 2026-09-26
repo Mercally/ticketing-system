@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\..\..\building-blocks\messaging\TicketingPlatform.Messaging.csproj" />
     <ProjectReference Include="..\..\..\..\building-blocks\observability\TicketingPlatform.Observability.csproj" />
     <ProjectReference Include="..\..\..\..\building-blocks\idempotency\TicketingPlatform.Idempotency.csproj" />
+    <ProjectReference Include="..\..\..\..\building-blocks\auth\TicketingPlatform.Auth.csproj" />
   </ItemGroup>
 
 </Project>

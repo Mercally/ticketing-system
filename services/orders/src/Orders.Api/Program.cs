@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Orders.Application;
 using Orders.Infrastructure;
 using Orders.Infrastructure.Saga;
+using TicketingPlatform.Auth;
 using TicketingPlatform.Idempotency;
 using TicketingPlatform.Messaging;
 using TicketingPlatform.Observability;
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddTicketingLogging("orders");
 builder.AddServiceDefaults();
+builder.AddJwtAuthentication();
 
 builder.AddNpgsqlDbContext<OrdersDbContext>("ordersdb");
 
@@ -56,6 +58,8 @@ var app = builder.Build();
 
 app.UseCorrelationId();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

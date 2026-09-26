@@ -16,6 +16,7 @@ public sealed record OrderDto(
     string Status,
     Guid EventId,
     Guid SeatId,
+    Guid BuyerId,
     decimal Amount,
     string Currency,
     string? FailureReason,

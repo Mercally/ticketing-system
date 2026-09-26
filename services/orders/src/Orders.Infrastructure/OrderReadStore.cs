@@ -18,6 +18,7 @@ public sealed class OrderReadStore(OrdersDbContext db) : IOrderReadStore
             saga.CurrentState,
             saga.EventId,
             saga.SeatId,
+            saga.BuyerId,
             saga.Amount,
             saga.Currency,
             saga.FailureReason,

@@ -1,6 +1,7 @@
 using MassTransit;
 using Ticketing.Application;
 using Ticketing.Infrastructure;
+using TicketingPlatform.Auth;
 using TicketingPlatform.Idempotency;
 using TicketingPlatform.Messaging;
 using TicketingPlatform.Observability;
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddTicketingLogging("ticketing");
 builder.AddServiceDefaults();
+builder.AddJwtAuthentication();
 
 builder.AddNpgsqlDbContext<TicketingDbContext>("ticketingdb");
 
@@ -53,6 +55,8 @@ var app = builder.Build();
 
 app.UseCorrelationId();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
