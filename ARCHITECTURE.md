@@ -92,17 +92,17 @@ Rel(notification, sqs, "Consumes OrderConfirmed,PaymentSucceeded,PaymentFailed,T
 
 ## 4. Microservice responsibilities
 
-| Service | Stack | Owns | Does NOT own |
-|---|---|---|---|
-| **Gateway** | .NET 10 + YARP | Routing, rate limiting, waiting room admission, WAF-equivalent header/size checks | Business logic, auth decisions (delegates JWT validation downstream) |
-| **Auth Service** | NestJS + Prisma + Postgres | Users, credentials, JWT issuance, refresh token rotation | Seat/order/payment data |
-| **Catalog Service** | .NET 10 Clean Architecture + EF Core + Postgres | Events, venues, seat map layout (reference data, low write volume) | Seat availability state (that's Ticketing's) |
-| **Ticketing/Inventory Service** | .NET 10 Clean Architecture + EF Core + Postgres | **Sole authoritative** seat state (`AVAILABLE`/`RESERVED`/`SOLD`), reservation TTL, SignalR broadcast | Payments, orders |
-| **Order Service** | .NET 10 Clean Architecture + EF Core + Postgres + MassTransit Saga | Order lifecycle, Saga orchestration (Reserve confirmed → Create Order → Payment → Confirm) | Seat state, payment state (commands them, doesn't own their data) |
-| **Payment Service** | .NET 10 Clean Architecture + EF Core + Postgres | Payment attempts, idempotent processing, calls external gateway | Card data (never stored) |
-| **Fake Payment Gateway** | .NET 10 Minimal API | Simulated external pasarela — success/decline/timeout/duplicate-callback/delayed-response | Everything else — stateless simulator |
-| **Notification Service** | NestJS + AWS SDK + OTel | Consuming domain events, idempotent fan-out to SNS | Transactional/business state |
-| **Frontend** | React + TS + Vite | UI/UX only | Business rules (always re-validated server-side) |
+| Service                               | Stack                                                              | Owns                                                                                                              | Does NOT own                                                         |
+| ------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Gateway**                     | .NET 10 + YARP                                                     | Routing, rate limiting, waiting room admission, WAF-equivalent header/size checks                                 | Business logic, auth decisions (delegates JWT validation downstream) |
+| **Auth Service**                | NestJS + Prisma + Postgres                                         | Users, credentials, JWT issuance, refresh token rotation                                                          | Seat/order/payment data                                              |
+| **Catalog Service**             | .NET 10 Clean Architecture + EF Core + Postgres                    | Events, venues, seat map layout (reference data, low write volume)                                                | Seat availability state (that's Ticketing's)                         |
+| **Ticketing/Inventory Service** | .NET 10 Clean Architecture + EF Core + Postgres                    | **Sole authoritative** seat state (`AVAILABLE`/`RESERVED`/`SOLD`), reservation TTL, SignalR broadcast | Payments, orders                                                     |
+| **Order Service**               | .NET 10 Clean Architecture + EF Core + Postgres + MassTransit Saga | Order lifecycle, Saga orchestration (Reserve confirmed → Create Order → Payment → Confirm)                     | Seat state, payment state (commands them, doesn't own their data)    |
+| **Payment Service**             | .NET 10 Clean Architecture + EF Core + Postgres                    | Payment attempts, idempotent processing, calls external gateway                                                   | Card data (never stored)                                             |
+| **Fake Payment Gateway**        | .NET 10 Minimal API                                                | Simulated external pasarela — success/decline/timeout/duplicate-callback/delayed-response                        | Everything else — stateless simulator                               |
+| **Notification Service**        | NestJS + AWS SDK + OTel                                            | Consuming domain events, idempotent fan-out to SNS                                                                | Transactional/business state                                         |
+| **Frontend**                    | React + TS + Vite                                                  | UI/UX only                                                                                                        | Business rules (always re-validated server-side)                     |
 
 ---
 
