@@ -30,13 +30,21 @@ public sealed class SeatReservationService(ISeatStore seats, ISeatAvailabilityNo
         return new ReserveSeatResult(true, reservationId, expiresAtUtc);
     }
 
-    /// <summary>Buyer-initiated release (POST /reservations/{id}/release) — the route only carries the reservation id, so the seat/event are resolved from it first.</summary>
-    public async Task<bool> ReleaseByReservationAsync(Guid reservationId, CancellationToken cancellationToken)
+    /// <summary>Buyer-initiated release (POST /reservations/{id}/release) — the route only carries the
+    /// reservation id, so the seat/event are resolved from it first. <paramref name="callerBuyerId"/> is
+    /// the authenticated caller's own id (from the JWT "sub" claim, not client-supplied) — only the buyer
+    /// who holds the reservation may release it.</summary>
+    public async Task<ReservationReleaseOutcome> ReleaseByReservationAsync(Guid reservationId, Guid callerBuyerId, CancellationToken cancellationToken)
     {
         var seat = await seats.GetByReservationIdAsync(reservationId, cancellationToken);
         if (seat is null)
         {
-            return false;
+            return ReservationReleaseOutcome.NotFound;
+        }
+
+        if (seat.BuyerId != callerBuyerId)
+        {
+            return ReservationReleaseOutcome.Forbidden;
         }
 
         var affected = await seats.TryReleaseAsync(seat.Id, reservationId, cancellationToken);
@@ -45,7 +53,7 @@ public sealed class SeatReservationService(ISeatStore seats, ISeatAvailabilityNo
             await notifier.SeatStatusChangedAsync(seat.EventId, seat.Id, SeatStatus.Available, cancellationToken);
         }
 
-        return affected == 1;
+        return affected == 1 ? ReservationReleaseOutcome.Released : ReservationReleaseOutcome.NotFound;
     }
 
     public async Task<bool> ConfirmAsync(Guid eventId, Guid seatId, Guid reservationId, CancellationToken cancellationToken)
