@@ -449,3 +449,38 @@ button {
   margin: 0;
   font-size: 14px;
 }
+
+/* ---- Demo lab (traffic spike / chaos simulation) ---- */
+
+.demo-lab {
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.demo-lab-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.demo-lab-form {
+  flex-direction: row;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+
+.demo-lab-form .field {
+  width: 160px;
+}
+
+.demo-lab-form button[type='submit'] {
+  margin-top: 0;
+}
+
+.demo-lab-result {
+  margin: 12px 0 0;
+  font-size: 14px;
+}

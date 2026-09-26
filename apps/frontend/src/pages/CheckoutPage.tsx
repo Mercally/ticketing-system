@@ -13,6 +13,18 @@ import { generateUuid } from '../lib/uuid';
 const DEMO_AMOUNT = 89.99;
 const DEMO_CURRENCY = 'USD';
 
+// What each mode actually exercises end-to-end (docs/CONTRACTS.md §7/§8, ARCHITECTURE.md §7) —
+// shown under the selector so the dropdown reads as a deliberate demo feature, not a stray dev field.
+const SIMULATION_MODE_HINTS: Record<PaymentSimulationMode, string> = {
+  Success: 'Gateway approves immediately — the happy path through to a Completed order.',
+  Decline: 'Gateway declines the card — saga cancels the order and releases the seat back to AVAILABLE.',
+  Timeout:
+    'Gateway sleeps 30s, past Payments’ configured HTTP timeout — trips its retry + circuit breaker (Polly), Payment recorded as Failed.',
+  DelayedResponse: 'Gateway sleeps 3s but still succeeds — slow but under the timeout budget, no retry triggered.',
+  DuplicateCallback:
+    'Gateway fires the same approval webhook twice — exercises Payment Service’s idempotent webhook handling.',
+};
+
 function formatRemaining(ms: number): string {
   if (ms <= 0) return '0:00';
   const totalSeconds = Math.floor(ms / 1000);
@@ -104,19 +116,23 @@ export function CheckoutPage() {
           <input type="text" value={`${DEMO_AMOUNT.toFixed(2)} ${DEMO_CURRENCY}`} readOnly />
         </label>
 
-        <label className="field">
-          <span>Simulate payment outcome (dev only)</span>
-          <select
-            value={simulationMode}
-            onChange={(e) => setSimulationMode(e.target.value as PaymentSimulationMode)}
-          >
-            {PAYMENT_SIMULATION_MODES.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </select>
-        </label>
+        <section className="demo-lab">
+          <h2>Demo lab: simulate payment outcome</h2>
+          <label className="field">
+            <span>Gateway behavior</span>
+            <select
+              value={simulationMode}
+              onChange={(e) => setSimulationMode(e.target.value as PaymentSimulationMode)}
+            >
+              {PAYMENT_SIMULATION_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="demo-lab-hint">{SIMULATION_MODE_HINTS[simulationMode]}</p>
+        </section>
 
         {createOrderMutation.isError && (
           <p className="form-error">{getErrorMessage(createOrderMutation.error)}</p>

@@ -15,6 +15,15 @@ import type {
   SeatStatusChangedPayload,
 } from '../types/api';
 
+interface TrafficSpikeResult {
+  seatLabel: string;
+  requestCount: number;
+  succeeded: number;
+  conflicted: number;
+  failed: number;
+  elapsedMs: number;
+}
+
 async function fetchEvent(eventId: string): Promise<EventDetail> {
   const response = await apiClient.get<EventDetail>(`/api/catalog/events/${eventId}`);
   return response.data;
@@ -39,6 +48,7 @@ export function EventDetailPage() {
   const startCheckout = useCheckoutStore((state) => state.startCheckout);
   const setReservation = useCheckoutStore((state) => state.setReservation);
   const [conflictSeatId, setConflictSeatId] = useState<string | null>(null);
+  const [spikeSize, setSpikeSize] = useState(20);
 
   // A fresh checkout flow (and correlation id) begins the moment the buyer opens
   // this seat map — per docs/CONTRACTS.md §2 / the checkout store contract.
@@ -101,6 +111,42 @@ export function EventDetailPage() {
     },
   });
 
+  // Demo lab: fires `count` concurrent reservation attempts at the SAME seat from the
+  // browser, no backend changes — proves the seat CAS (ARCHITECTURE.md §5.1) live, since
+  // the seat map above already re-renders from real SignalR pushes as the winner lands.
+  const spikeMutation = useMutation({
+    mutationFn: async ({ seat, count }: { seat: Seat; count: number }): Promise<TrafficSpikeResult> => {
+      const startedAt = performance.now();
+      const attempts = Array.from({ length: count }, () =>
+        apiClient.post<ReserveSeatResponse>(
+          '/api/ticketing/reservations',
+          { eventId, seatId: seat.id, buyerId },
+          { headers: { 'Idempotency-Key': generateUuid() } },
+        ),
+      );
+      const settled = await Promise.allSettled(attempts);
+      const elapsedMs = Math.round(performance.now() - startedAt);
+
+      let succeeded = 0;
+      let conflicted = 0;
+      let failed = 0;
+      for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') {
+          succeeded += 1;
+        } else if (axios.isAxiosError(outcome.reason) && outcome.reason.response?.status === 409) {
+          conflicted += 1;
+        } else {
+          failed += 1;
+        }
+      }
+
+      return { seatLabel: seat.label, requestCount: count, succeeded, conflicted, failed, elapsedMs };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: seatsQueryKey });
+    },
+  });
+
   const seatsByRow = useMemo(() => {
     const groups = new Map<string, Seat[]>();
     for (const seat of seatsQuery.data ?? []) {
@@ -114,6 +160,15 @@ export function EventDetailPage() {
     }
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [seatsQuery.data]);
+
+  const spikeTargetSeat = seatsQuery.data?.find((seat) => seat.status === 'AVAILABLE');
+  let spikeButtonLabel = 'No available seat to target';
+  if (spikeTargetSeat) {
+    spikeButtonLabel = `Simulate spike on seat ${spikeTargetSeat.label}`;
+  }
+  if (spikeMutation.isPending) {
+    spikeButtonLabel = 'Simulating…';
+  }
 
   if (!eventId) {
     return <p className="form-error">Missing event id.</p>;
@@ -192,6 +247,56 @@ export function EventDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {seatsQuery.data && (
+        <section className="demo-lab">
+          <h2>Demo lab: simulate a traffic spike</h2>
+          <p className="demo-lab-hint">
+            Fires many concurrent reservation attempts at the same seat, straight from this
+            browser tab — no backend or infra changes. Watch the seat above flip once via live
+            SignalR while every other attempt gets a 409, proving the seat CAS (ARCHITECTURE.md
+            §5.1) really does let exactly one buyer win.
+          </p>
+
+          <form
+            className="form demo-lab-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (spikeTargetSeat) {
+                spikeMutation.mutate({ seat: spikeTargetSeat, count: spikeSize });
+              }
+            }}
+          >
+            <label className="field">
+              <span>Concurrent buyers</span>
+              <input
+                type="number"
+                min={2}
+                max={200}
+                value={spikeSize}
+                onChange={(event) => setSpikeSize(Number(event.target.value))}
+              />
+            </label>
+
+            <button type="submit" disabled={!spikeTargetSeat || spikeMutation.isPending}>
+              {spikeButtonLabel}
+            </button>
+          </form>
+
+          {spikeMutation.isError && (
+            <p className="form-error">{getErrorMessage(spikeMutation.error)}</p>
+          )}
+
+          {spikeMutation.data && (
+            <p className="demo-lab-result">
+              Seat {spikeMutation.data.seatLabel}: <strong>{spikeMutation.data.succeeded} succeeded</strong>{' '}
+              · {spikeMutation.data.conflicted} conflicted (409)
+              {spikeMutation.data.failed > 0 && ` · ${spikeMutation.data.failed} errored`} · took{' '}
+              {spikeMutation.data.elapsedMs}ms for {spikeMutation.data.requestCount} requests
+            </p>
+          )}
+        </section>
       )}
     </div>
   );
