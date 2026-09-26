@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,12 @@ public static class Extensions
             logging.IncludeScopes = true;
         });
 
+        // MassTransit's transactional outbox/inbox polls Postgres every few seconds
+        // (OutboxState/InboxState housekeeping) regardless of real traffic — the raw SQL
+        // command text at Information level drowns out actual query logs. Warning+ still
+        // surfaces real EF problems (timeouts, failures).
+        builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+
         builder.Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
             {
@@ -61,6 +68,15 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
+                // MassTransit's outbox/inbox housekeeping and background sweep timers query
+                // Postgres directly with no ambient trace context, so Npgsql's own tracing
+                // (which we don't otherwise configure or control) records them as orphan root
+                // spans every few seconds — real request traces always root at the incoming
+                // ASP.NET Core "Server" span instead. Dropping parentless Client spans removes
+                // that noise at the source (never exported) without touching Postgres/HTTP
+                // spans that belong to an actual request or a propagated message.
+                tracing.SetSampler(new DropOrphanClientSpansSampler(new AlwaysOnSampler()));
+
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
@@ -70,7 +86,15 @@ public static class Extensions
                     )
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation(http =>
+                        // The AWS SDK's SQS long-poll (ReceiveMessage) fires continuously per
+                        // queue/consumer even when idle, over plain HttpClient under the hood —
+                        // it floods the Traces view with spans carrying no diagnostic value.
+                        // SendMessage/DeleteMessage etc. (real business events) still trace.
+                        http.FilterHttpRequestMessage = request =>
+                            !request.Headers.TryGetValues("X-Amz-Target", out var targets)
+                            || !targets.Any(t => t.EndsWith(".ReceiveMessage", StringComparison.Ordinal))
+                    );
             });
 
         builder.AddOpenTelemetryExporters();
@@ -123,5 +147,22 @@ public static class Extensions
         }
 
         return app;
+    }
+
+    // ponytail: matches on "no parent" only, not on query text — a future orphan Client span
+    // (a new background job someone adds without propagating trace context) would also be
+    // dropped silently. Acceptable today since the only orphan spans in this system are the
+    // MassTransit outbox/inbox pollers and the reservation sweep, all pure housekeeping.
+    private sealed class DropOrphanClientSpansSampler(Sampler rootSampler) : Sampler
+    {
+        public override SamplingResult ShouldSample(in SamplingParameters samplingParameters)
+        {
+            var isOrphanClientSpan = samplingParameters.Kind == ActivityKind.Client
+                && samplingParameters.ParentContext.TraceId == default;
+
+            return isOrphanClientSpan
+                ? new SamplingResult(SamplingDecision.Drop)
+                : rootSampler.ShouldSample(samplingParameters);
+        }
     }
 }
